@@ -144,22 +144,6 @@ class METAR:
             self._wind_dir_degrees = val
 
     @property
-    def wind_dir_degrees(self):
-        return self._wind_dir_degrees
-    
-    @wind_dir_degrees.setter
-    def wind_dir_degrees(self,val):
-        int_val = None
-        try:
-            int_val = int(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to int')
-        if int_val != None:
-            self._wind_dir_degrees = int_val
-        else:
-            self._wind_dir_degrees = val
-
-    @property
     def wind_speed_kt(self):
         return self._wind_speed_kt
     

@@ -1,14 +1,14 @@
 import urllib.request
 import logging
 import xml.etree.ElementTree as ET
-import datetime as datetime
 
-from .METAR import METAR
+from ADDSMETAR.METAR import METAR
 
 logger = logging.getLogger(__name__)
 
 class ADDSMETAR:
-	def __init__(self, stations: list = None):
+	
+	def __init__(self, stations = None):
 		self.logger = logger
 		self._last_update_time = None			# Time object to synchronize updates
 		self._initializeStations(stations)		# initialize the metar_data dictionary with the set of input stations
@@ -217,11 +217,10 @@ class ADDSMETAR:
 		'''
 		Removes a station from the object stations dictionary
 		'''
-		self.logge.debug(f'Tried to call unimplemented function: removeStation with arg: {station_id}')
+		self.logger.debug(f'Tried to call unimplemented function: removeStation with arg: {station_id}')
 		raise Exception('removeStation is not implemented')
 	
 
 if __name__ == '__main__':
 	# Test script for module
-	ADDSMETAR = ADDSMETAR()
-	ADDSMETAR.retrieveMETARData(['KSLE','KPDX'])
+	quit()
