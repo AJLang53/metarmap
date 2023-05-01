@@ -1,0 +1,38 @@
+<response xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:noNamespaceSchemaLocation="http://www.aviationweather.gov/static/adds/schema/metar1_2.xsd">
+<request_index>549934440</request_index>
+<data_source name="metars"/>
+<request type="retrieve"/>
+<errors/>
+<warnings/>
+<time_taken_ms>17</time_taken_ms>
+<data num_results="1">
+<METAR>
+<raw_text>
+KMTW 180156Z AUTO 30014G21KT 10SM UP FEW043 OVC060 M01/M03 A2973 RMK AO2 UPB46SNE46 SLP074 P0000 T10061033 FZRANO
+</raw_text>
+<station_id>KMTW</station_id>
+<observation_time>2023-04-18T01:56:00Z</observation_time>
+<latitude>44.12</latitude>
+<longitude>-87.67</longitude>
+<temp_c>-0.6</temp_c>
+<dewpoint_c>-3.3</dewpoint_c>
+<wind_dir_degrees>300</wind_dir_degrees>
+<wind_speed_kt>14</wind_speed_kt>
+<wind_gust_kt>21</wind_gust_kt>
+<visibility_statute_mi>10.0</visibility_statute_mi>
+<altim_in_hg>29.731298</altim_in_hg>
+<sea_level_pressure_mb>1007.4</sea_level_pressure_mb>
+<quality_control_flags>
+<auto>TRUE</auto>
+<auto_station>TRUE</auto_station>
+<freezing_rain_sensor_off>TRUE</freezing_rain_sensor_off>
+</quality_control_flags>
+<wx_string>UP</wx_string>
+<sky_condition sky_cover="FEW" cloud_base_ft_agl="4300"/>
+<sky_condition sky_cover="OVC" cloud_base_ft_agl="6000"/>
+<flight_category>VFR</flight_category>
+<precip_in>0.005</precip_in>
+<metar_type>METAR</metar_type>
+<elevation_m>197.0</elevation_m>
+</METAR>
+</data>

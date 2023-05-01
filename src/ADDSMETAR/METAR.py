@@ -25,6 +25,9 @@ class METAR:
         self._sky_condition = []
         return
     
+    def __repr__(self):
+        return f'METAR: {self._raw_text}'
+    
     @property
     def raw_text(self):
         return self._raw_text
