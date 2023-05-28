@@ -9,6 +9,8 @@ import logging, logging.handlers
 from ADDSMETAR.ADDSMETAR import ADDSMETARThread
 import ADDSMETAR.METAR as METAR
 
+loop_inc = 0
+
 def initializeRotatingLog(fileLevel = logging.WARNING):
     # Setup root logger
     logger = logging.getLogger()
@@ -79,13 +81,18 @@ class MainLoop:
         self.addsmetarThread.start()
 
     def loop(self):
+        global loop_inc
         self._check_for_new_METAR_data()
         # self._check_for_stale_data()
         try:
             if self.data_is_stale.is_set():
                 pass
             else:
-                print(self.metar_data['KOSH'])
+                key = list(self.metar_data.keys())[loop_inc]
+                print(self.metar_data[key])
+                loop_inc += 1
+                if loop_inc >= len(self.metar_data.keys()):
+                    loop_inc = 0
         except KeyError:
             # print('No key for OSH yet')
             pass

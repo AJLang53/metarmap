@@ -303,11 +303,13 @@ class METAR:
         Each sky condition comes in the following form <sky_condition sky_cover="FEW" cloud_base_ft_agl="4300"/>
         There can be multiple of these items, so each should be a dictionary
         '''
-        try:
-            int_cloud_base_ft_agl = int(cloud_base_ft_agl)
-            cloud_base_ft_agl = int_cloud_base_ft_agl
-        except Exception as e:
-            self.logger.exception(f'Failed converting {cloud_base_ft_agl} to float')
+
+        if cloud_base_ft_agl is not None:
+            try:
+                int_cloud_base_ft_agl = int(cloud_base_ft_agl)
+                cloud_base_ft_agl = int_cloud_base_ft_agl
+            except Exception as e:
+                self.logger.exception(f'Failed converting {cloud_base_ft_agl} to float')
 
         sky_condition_dict = {
             'sky_cover': sky_cover,

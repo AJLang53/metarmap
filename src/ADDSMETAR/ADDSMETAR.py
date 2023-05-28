@@ -203,9 +203,18 @@ class ADDSMETAR:
 							except AttributeError as AE:
 								# Sky Condition is not expected to have a setter, apply behavior here
 								if element.tag == 'sky_condition':
-									self._metar_data[station_id].add_sky_condition(
-										sky_cover = element.attrib['sky_cover'],
+									try:
 										cloud_base_ft_agl = element.attrib['cloud_base_ft_agl']
+									except:
+										cloud_base_ft_agl = None
+
+									try:
+										sky_cover = element.attrib['sky_cover']
+									except:
+										sky_cover = None
+									self._metar_data[station_id].add_sky_condition(
+										sky_cover = sky_cover,
+										cloud_base_ft_agl = cloud_base_ft_agl
 										)
 								else:
 									self.logger.exception(f'Unexpected Attribute in METAR dataset: {element.tag}')
