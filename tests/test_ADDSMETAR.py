@@ -1,4 +1,4 @@
-from ADDSMETAR import ADDSMETAR
+from METAR import ADDSMETAR
 
 def test_initialize_stations():
     return
@@ -16,3 +16,4 @@ def test_addStation():
     return
 
 def test_removeStation():
+    return
