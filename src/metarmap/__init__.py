@@ -1,2 +1,2 @@
 from metarmap.METAR_Map_Config import METAR_MAP_Config, Day_Night_Dimming_Config, METAR_COLOR_CONFIG
-from metarmap.loop import MainLoop
+from metarmap.MainLoop import MainLoop

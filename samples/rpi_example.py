@@ -2,26 +2,31 @@ import sys
 import logging
 from datetime import timedelta
 from collections import deque
+from pathlib import Path
 
 from threading import Event
 
 # Module imports
-from metarmap.loop import MainLoop
+from metarmap.MainLoop import MainLoop
 from metarmap.METAR_Map_Config import METAR_MAP_Config, METAR_COLOR_CONFIG
 
 # METAR SOURCE
 from METAR.ADDS_METAR_Thread import ADDSMETARThread
 
 # LED Driver
-from metarmap.RPi_zero_NeoPixel_LED_Driver import RPi_zero_NeoPixel_LED_Driver, RPi_zero_NeoPixel_Config
+from LED_Control.RPi_zero_NeoPixel_LED_Driver import RPi_zero_NeoPixel_LED_Driver, RPi_zero_NeoPixel_Config
 import board
+
+from metarmap.Logging import initialize_basic_log_stream, initialize_rotating_file_log
 
 from metarmap.utils import median_function_timer
 
 def main():
+    initialize_basic_log_stream(logging.getLogger(), logging.INFO)
+    # initialize_rotating_file_log(logging.getLogger(), output_directory = Path(__file__).parent, output_name = 'test_rot_log', max_bytes = 10*1024*1024, backupCount=25)
     logger = logging.getLogger('main_function')
 
-    # Get the configuration
+    # Create a configuration
     from pathlib import Path
     map_config  = METAR_MAP_Config(logging_level=logging.DEBUG, station_map = {
         'KSLE': 0,
@@ -39,11 +44,11 @@ def main():
         )
     )
 
-    # Generate the events used to communicate with this thread
+    # Create the METAR data source
     ADDSMETAR_stop_request = Event()
     ADDSMETAR_stop_request.clear()
 
-    # Generate the thread object itself
+    # Generate the thread object and start it
     adds_metar_thread = ADDSMETARThread(stop_request=ADDSMETAR_stop_request,
                                             stations = map_config.station_map,
                                                 update_interval=timedelta(seconds = 5),

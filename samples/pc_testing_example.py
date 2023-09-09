@@ -2,30 +2,47 @@ import sys
 import logging
 from datetime import timedelta
 from collections import deque
+from pathlib import Path
 
 from threading import Event
 
-from metarmap.loop import MainLoop
-from metarmap.METAR_Map_Config import METAR_MAP_Config, METAR_COLOR_CONFIG
-from METAR.ADDS_METAR_Thread import ADDSMETARThread
+from metarmap import MainLoop, METAR_MAP_Config, METAR_COLOR_CONFIG, Day_Night_Dimming_Config
+from METAR import ADDSMETARThread
+
+from metarmap.Logging import initialize_basic_log_stream, initialize_rotating_file_log
 
 from metarmap.utils import median_function_timer
 
 def main():
     logger = logging.getLogger('main_function')
+    initialize_basic_log_stream(logger, logging.INFO)
+    initialize_rotating_file_log(logging.getLogger(), output_directory = Path(__file__).parent, output_name = 'test_rot_log', maxBytes= 10*1024*1024, backupCount=25)
 
-    # Get the configuration
-    from pathlib import Path
-    map_config  = METAR_MAP_Config(logging_level=logging.DEBUG, station_map = {
+    # Construct a configuration
+    station_map = {
         'KSLE': 0,
         'KONP': 1,
         'KOSH': 2
-    },
-    metar_colors_config=METAR_COLOR_CONFIG(),
+    }
+    metar_colors_config=METAR_COLOR_CONFIG()
     led_driver= None
+    day_night_dimming_config = Day_Night_Dimming_Config(
+        day_night_dimming=True,
+        brightness_dim=0.1,
+        use_sunrise_sunet=True,
+        day_night_latitude=45,
+        day_night_longitude=-93
     )
 
-    # Generate the events used to communicate with this thread
+    map_config  = METAR_MAP_Config(
+        station_map=station_map,
+        led_driver=led_driver,
+        metar_colors_config=metar_colors_config,
+        day_night_dimming_config=day_night_dimming_config
+    
+    )
+
+    # Construct the METAR Source
     ADDSMETAR_stop_request = Event()
     ADDSMETAR_stop_request.clear()
 

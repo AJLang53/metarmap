@@ -6,16 +6,13 @@ from datetime import datetime, timedelta
 
 # Core Module Imports
 from METAR import METAR
-from metarmap.METAR_Map_Config import METAR_MAP_Config, METAR_COLOR_CONFIG
+from metarmap.METAR_Map_Config import METAR_MAP_Config
 from metarmap.Station import Station
 from metarmap.RGB_color import RGB_color, apply_brightness
 
-# METAR Data Source
-from METAR.ADDS_METAR_Thread import ADDSMETARThread
-
 # LED Driver
 try:
-    from metarmap.RPi_zero_NeoPixel_LED_Driver import RPi_zero_NeoPixel_LED_Driver, RPi_zero_NeoPixel_Config
+    from LED_Control.RPi_zero_NeoPixel_LED_Driver import RPi_zero_NeoPixel_LED_Driver, RPi_zero_NeoPixel_Config
 # A NotImplementedError will be raised if the platform has not implemented these things (such as your computer)
 # Just pass along, for testing on machines that hit this error you should not try to use them anyways
 except NotImplementedError:

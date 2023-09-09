@@ -1,11 +1,14 @@
 from __future__ import annotations
 import logging
 from datetime import datetime
+from dataclasses import dataclass
+from pathlib import Path
 
 # Module Imports
 from metarmap.utils import is_between_sunrise_sunset
 from metarmap.RGB_color import RGB_color
-from metarmap.LED_Driver import LED_DRIVER
+from LED_Control.LED_Driver import LED_DRIVER
+
 
 class Day_Night_Dimming_Config:
     """Configuraiton for day-night dimming feature"""
@@ -88,7 +91,6 @@ class METAR_MAP_Config:
                  ):
         
         # Basic items
-        self.logging_level = logging_level
         self.station_map = station_map
         self.led_driver = led_driver
         self.metar_colors = metar_colors_config

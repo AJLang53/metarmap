@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime
 import typing
@@ -12,8 +13,8 @@ import astral, astral.sun
 def is_between_sunrise_sunset(latitude: float, longitude: float, time: datetime) -> bool:
     """Returns True if the time provided at location is between sunrise and sunset"""
     observer = astral.Observer(latitude=latitude, longitude=longitude)
-    sunrise = astral.sun.sunrise(observer=observer, date = datetime.date())
-    sunset = astral.sun.sunset(observer=observer, date = datetime.date())
+    sunrise = astral.sun.sunrise(observer=observer, date = datetime.date(datetime.now())).time()
+    sunset = astral.sun.sunset(observer=observer, date = datetime.date(datetime.now())).time()
     return sunrise < time < sunset
 
 def quickselect_median(dset: typing.Iterable[numeric], pivot_fn: typing.Callable[[typing.Iterable[numeric]], numeric] = random.choice) -> float:
@@ -112,30 +113,3 @@ def parse_station_map(path):
             led_index = line.split(',')[1]
             station_map[station_id] = int(led_index)
     return station_map
-
-def initializeRotatingLog(fileLevel = logging.WARNING):
-    # Setup root logger
-    logger = logging.getLogger()
-    logger.setLevel(fileLevel)
-
-    # Send INFO messages to the console
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
-    logger.addHandler(ch)
-
-    # Log files in a logs folder at the main application level. Create this directory if it does not exist
-    log_dir = Path(__file__).parent.parent.parent / 'logs'
-    if not log_dir.exists():
-        Path.mkdir(log_dir)
-
-    # Log file should be a file labeled date_metarmap
-    log_file_name = '{}_metarmap.log'.format(datetime.now().strftime('%Y-%m-%dT%H-%M-%S'))
-    # LOG_FILEPATH = os.path.join(logDir,logFileName)
-    LOG_FILEPATH = log_dir / log_file_name
-
-    # Setup a Rotating Log File with fixed size for continuous logging
-    # Allocate 250mb to this task, keeps file 10mb each
-    rotHandler = logging.handlers.RotatingFileHandler(LOG_FILEPATH, maxBytes=10*1024*1024, backupCount=25)
-    rotHandler.setFormatter(logging.Formatter('[%(asctime)s] %(name)-16s :: %(levelname)-8s :: %(message)s'))
-    logger.addHandler(rotHandler)

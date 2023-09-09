@@ -7,7 +7,7 @@ from adafruit_blinka.microcontroller.generic_micropython import Pin
 import neopixel
 
 # Module imports
-from metarmap.LED_Driver import LED_DRIVER
+from LED_Control.LED_Driver import LED_DRIVER
 from metarmap.RGB_color import RGB_color
 
 @dataclass
