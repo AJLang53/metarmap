@@ -1,2 +1,5 @@
+Adafruit_Blinka==8.20.1
+adafruit_circuitpython_neopixel==6.3.9
+astral==3.2
 setuptools==65.5.0
-toml==0.10.2
+setuptools==67.6.1

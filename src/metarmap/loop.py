@@ -4,11 +4,12 @@ import typing
 import logging
 from datetime import datetime, timedelta
 
-# import neopixel
+import neopixel
+import board
 
 from METAR import METAR
 from METAR.ADDS_METAR_Thread import ADDSMETARThread
-from metarmap.Config import METAR_MAP_Config, METAR_COLOR_CONFIG
+from metarmap.Config import METAR_MAP_Config, METAR_COLOR_CONFIG, NeoPixel_Config
 
 class METAR_SOURCE(typing.Protocol):
     """Defines a valid METAR data source for the METARMAP loop to pull data from"""
@@ -180,7 +181,13 @@ if __name__ == '__main__':
         'KONP': 1,
         'KOSH': 2
     },
-    metar_colors_config=METAR_COLOR_CONFIG()
+    metar_colors_config=METAR_COLOR_CONFIG(),
+    neopixel_config=NeoPixel_Config(
+        led_count=50,
+        pin = board.D18,
+        brightness=1.0,
+        order = neopixel.GRB
+    )
     )
 
     # Generate the events used to communicate with this thread
@@ -203,6 +210,9 @@ if __name__ == '__main__':
     metarmap_loop_timer_buffer: deque[float] = deque([],maxlen=25)
     try:
         while True:
-             metarmap_loop.loop()
+            loop_length = median_function_timer(metarmap_loop_timer_buffer, metarmap_loop.loop)
+            print(f'METARMAP_loop Run Time: {loop_length}')
+            if metarmap_loop.metar_source.is_running:
+                print('METAR AGE: {metarmap_loop.current_metar_state_age}')
     except KeyboardInterrupt:
         logger.critical('Loop Ended by Keyboard Interrupt')

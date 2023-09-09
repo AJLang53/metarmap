@@ -1,3 +1,4 @@
+from __future__ import annotations
 import urllib.request
 import logging
 import xml.etree.ElementTree as ET
