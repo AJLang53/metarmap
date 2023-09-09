@@ -7,6 +7,14 @@ numeric = typing.Union[int, float, complex]     # Define numeric type
 from collections import deque
 from time import perf_counter
 import random
+import astral, astral.sun
+
+def is_between_sunrise_sunset(latitude: float, longitude: float, time: datetime) -> bool:
+    """Returns True if the time provided at location is between sunrise and sunset"""
+    observer = astral.Observer(latitude=latitude, longitude=longitude)
+    sunrise = astral.sun.sunrise(observer=observer, date = datetime.date())
+    sunset = astral.sun.sunset(observer=observer, date = datetime.date())
+    return sunrise < time < sunset
 
 def quickselect_median(dset: typing.Iterable[numeric], pivot_fn: typing.Callable[[typing.Iterable[numeric]], numeric] = random.choice) -> float:
     """Returns the set median in average O(n) time"""

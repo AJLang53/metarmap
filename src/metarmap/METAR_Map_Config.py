@@ -1,27 +1,11 @@
 from __future__ import annotations
 import logging
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Tuple
 
-import astral.sun
-
-from adafruit_blinka.microcontroller.generic_micropython import Pin
-
-def is_between_sunrise_sunset(latitude: float, longitude: float, time: datetime) -> bool:
-    """Returns True if the time provided at location is between sunrise and sunset"""
-    observer = astral.Observer(latitude=latitude, longitude=longitude)
-    sunrise = astral.sun.sunrise(observer=observer, date = datetime.date())
-    sunset = astral.sun.sunset(observer=observer, date = datetime.date())
-    return sunrise < time < sunset
-
-@dataclass
-class NeoPixel_Config:
-    """Configuration for Neopixel interface with Raspberry Pi GPIO"""
-    led_count: int      # Number of LED pixels
-    pin: Pin            # GPIO pin in use
-    brightness: float   # 0.0 to 1.0
-    order: str          # Strip type and color ordering
+# Module Imports
+from metarmap.utils import is_between_sunrise_sunset
+from metarmap.RGB_color import RGB_color
+from metarmap.LED_Driver import LED_DRIVER
 
 class Day_Night_Dimming_Config:
     """Configuraiton for day-night dimming feature"""
@@ -72,13 +56,13 @@ class Day_Night_Dimming_Config:
 
 class METAR_COLOR_CONFIG:
     """Configuration of colors for METAR conditions"""
-    def __init__(self, color_vfr: Tuple[float] = (255,0,0), color_vfr_fade: Tuple[float] = (125,0,0),
-                 color_mvfr: Tuple[float] = (0,0,255), color_mvfr_fade: Tuple[float] = (0,0,125),
-                 color_ifr: Tuple[float] = (0,255,0), color_ifr_fade: Tuple[float] = (0,125,0),
-                 color_lifr: Tuple[float] = (0,125,125), color_lifr_fade: Tuple[float] = (0,75,75),
-                 color_clear: Tuple[float] = (0,0,0),
-                 color_lightning: Tuple[float] = (255,255,255),
-                 color_high_winds: Tuple[float] = (255,255,0)
+    def __init__(self, color_vfr: RGB_color = RGB_color(255,0,0), color_vfr_fade: RGB_color = RGB_color(125,0,0),
+                 color_mvfr: RGB_color = RGB_color(0,0,255), color_mvfr_fade: RGB_color = RGB_color(0,0,125),
+                 color_ifr: RGB_color = RGB_color(0,255,0), color_ifr_fade: RGB_color = RGB_color(0,125,0),
+                 color_lifr: RGB_color = RGB_color(0,125,125), color_lifr_fade: RGB_color = RGB_color(0,75,75),
+                 color_clear: RGB_color = RGB_color(0,0,0),
+                 color_lightning: RGB_color = RGB_color(255,255,255),
+                 color_high_winds: RGB_color = RGB_color(255,255,0)
                  ):
         self.color_vfr = color_vfr
         self.color_vfr_fade = color_vfr_fade
@@ -96,8 +80,8 @@ class METAR_COLOR_CONFIG:
 class METAR_MAP_Config:
     """Configuration of the METAR MAP"""
     def __init__(self, logging_level: int = logging.INFO, station_map: dict[str, int] = {}, 
-                 neopixel_config: NeoPixel_Config | None = None, 
-                 metar_colors_config: METAR_COLOR_CONFIG | None = None,
+                 led_driver: LED_DRIVER | None = None, 
+                 metar_colors_config: METAR_COLOR_CONFIG = METAR_COLOR_CONFIG(),     # Apply default color config if not provided
                  day_night_dimming_config: Day_Night_Dimming_Config | None = None,
 
                  
@@ -106,9 +90,25 @@ class METAR_MAP_Config:
         # Basic items
         self.logging_level = logging_level
         self.station_map = station_map
-        self.neopixel = neopixel_config
+        self.led_driver = led_driver
         self.metar_colors = metar_colors_config
 
         #Features
         # Day-Night Dimming
         self.day_night_dimming = day_night_dimming_config
+
+    @property
+    def led_enabled(self) -> bool:
+        """led_enabled property, True if there is a valid LED_driver"""
+        if self.led_driver is not None:
+            if self.led_driver.is_valid:
+                return True
+        return False
+    
+    @property 
+    def day_night_dimming_enabled(self) -> bool:
+        """day_night_dimming feature proprety, True if the configuration is present and valid"""
+        if self.day_night_dimming is not None:
+            if self.day_night_dimming.valid:
+                return True
+        return False

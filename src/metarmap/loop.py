@@ -4,12 +4,22 @@ import typing
 import logging
 from datetime import datetime, timedelta
 
-import neopixel
-import board
-
+# Core Module Imports
 from METAR import METAR
+from metarmap.METAR_Map_Config import METAR_MAP_Config, METAR_COLOR_CONFIG
+from metarmap.Station import Station
+from metarmap.RGB_color import RGB_color, apply_brightness
+
+# METAR Data Source
 from METAR.ADDS_METAR_Thread import ADDSMETARThread
-from metarmap.Config import METAR_MAP_Config, METAR_COLOR_CONFIG, NeoPixel_Config
+
+# LED Driver
+try:
+    from metarmap.RPi_zero_NeoPixel_LED_Driver import RPi_zero_NeoPixel_LED_Driver, RPi_zero_NeoPixel_Config
+# A NotImplementedError will be raised if the platform has not implemented these things (such as your computer)
+# Just pass along, for testing on machines that hit this error you should not try to use them anyways
+except NotImplementedError:
+    pass
 
 class METAR_SOURCE(typing.Protocol):
     """Defines a valid METAR data source for the METARMAP loop to pull data from"""
@@ -34,17 +44,6 @@ class METAR_SOURCE(typing.Protocol):
         Returns if the METAR_SOURCE is still running functionally and can return valid data
         """
 
-class Station:
-    def __init__(self, idx: int, id: str, pin_index: int, active_color: typing.Tuple[float]):
-        self.idx = idx
-        self.id = id
-        self.pin_index = pin_index
-        self.active_color = active_color
-        return
-
-    def __lt__(self, other: Station) -> bool:
-        return self.idx < other.idx
-
 class MainLoop:
     '''
     Main program loop, handles the side threads and takes the configuration
@@ -65,12 +64,6 @@ class MainLoop:
                 active_color=self.config.metar_colors.color_clear
             ))
 
-        # Neopixel control object
-        # self._neopixel = neopixel.NeoPixel(pin = self.config.neopixel.pin, 
-        #                                    n = self.config.neopixel.led_count,
-        #                                    brightness=self.config.neopixel.brightness,
-        #                                    pixel_order=self.config.neopixel.order,
-        #                                    auto_write=False)
         return
 
     def __repr__(self):
@@ -105,7 +98,7 @@ class MainLoop:
             self.metar_source.new_metar_data = False                # Set the new data flag to false
 
 
-    def _process_flight_category(self, station_metar: METAR) -> typing.Tuple[float]:
+    def _process_flight_category(self, station_metar: METAR) -> RGB_color:
         """Handle the flight category for the base color"""
 
         if station_metar.flight_category == 'VFR':
@@ -116,21 +109,30 @@ class MainLoop:
             color = self.config.metar_colors.color_ifr
         elif station_metar.flight_category == 'LIFR':
             color = self.config.metar_colors.color_lifr
+        else:
+            raise ValueError(f'Unsupported flight_category: {station_metar.flight_category} for station_metar: {station_metar}')
+        
         return color
     
-    def _process_brightness(self, color: typing.Tuple[float]) -> typing.Tuple[float]:
+    def _process_brightness(self, color: RGB_color) -> RGB_color:
         """Handle the brightness configuraitons and modify color appropriately"""
 
-        # Determine the brightness multiplier
-        brightness_multiplier = 1
-        if self.config.day_night_dimming is not None:
-            if self.config.day_night_dimming.use_dim(datetime.now()):
-                brightness_multiplier = self.config.day_night_dimming.brightness_dim
+        # Default behavior is no change
+        modified_color = color
 
-        # Apply to all elements of color tuple
-        modified_color = tuple([element*brightness_multiplier for element in color])
+        # Check if there is a day_night_dimming configuration, if there is, apply the brightness multiplier
+        if self.config.day_night_dimming is not None:
+            if self.config.day_night_dimming.use_dim(datetime.now()):       # The configuration itself provides the method to determine if it should be dim now
+                brightness_multiplier = self.config.day_night_dimming.brightness_dim
+                modified_color = apply_brightness(color, brightness_multiplier)
+
         return modified_color
 
+    def _process_wind(self, *args, **kwargs):
+        return
+    
+    def _process_lightning(self, *args, **kwargs):
+        return
 
     def _update_color_map(self) -> None:
         """Update the color map between stations and their pixels using the metar data"""
@@ -138,13 +140,21 @@ class MainLoop:
         for station_id in self._current_metar_state:
             station_metar = self._current_metar_state[station_id]
 
-            color = self._process_flight_category(station_metar)
+            try:
+                color = self._process_flight_category(station_metar)
+            # A ValueError is raised if the station_metar does not have a supported flight category
+            # Log the error, but continue through the loop (ignore this case, hopefully a new METAR will resolve it)
+            except ValueError as ve:
+                self._logger.error(f'Error encountered in process_flight_category for station_id: {station_id}, METAR: {station_metar}')
+                continue
+
             wind_color = self._process_wind(station_metar)
             lightning_color = self._process_lightning(station_metar)
 
             brightness_modified_color = self._process_brightness(color)
 
             # Apply the result to the object station list
+            # This is correlating the station list to the station-METAR dictionary
             for station in self.stations:
                 if station.id == station_id:
                     station.active_color = brightness_modified_color
@@ -152,67 +162,26 @@ class MainLoop:
 
     def _update_LEDs(self) -> None:
         """
-        Update the LED state based on the current METAR
+        Update the LED state using the current active station data
         """
 
-        # Map colors to stations based on the configuration and current conditions
-        self._update_color_map()
-
-        # Modify the LED state
         for station in self.stations:
-            self._neopixel[station.pin_index] = station.active_color
+            # Only call this update if the color has actually changed
+            if station.updated:
+                # Bypass if LED_driver is not configured (allows for testing without actually using LEDs)
+                if self.config.led_driver is not None:
+                    self.config.led_driver.update_LED(station.pin_index, station.active_color)
+                else:
+                    self._logger.debug('no LED Driver configured')
 
         return
 
     def loop(self):
+        # See if the METAR_SOURCE has new data available and update the mainloop data if so
         self._check_for_new_METAR_data()
-        # self._update_LEDs()
 
-from collections import deque
-from metarmap.utils import median_function_timer
-if __name__ == '__main__':
-    logger = logging.getLogger('main_function')
+        # Map colors to stations based on the configuration and current conditions
+        self._update_color_map()
 
-    # Get the configuration
-    from pathlib import Path
-    config_file = Path('example.cfg')
-    map_config  = METAR_MAP_Config(logging_level=logging.DEBUG, station_map = {
-        'KSLE': 0,
-        'KONP': 1,
-        'KOSH': 2
-    },
-    metar_colors_config=METAR_COLOR_CONFIG(),
-    neopixel_config=NeoPixel_Config(
-        led_count=50,
-        pin = board.D18,
-        brightness=1.0,
-        order = neopixel.GRB
-    )
-    )
-
-    # Generate the events used to communicate with this thread
-    ADDSMETAR_stop_request = Event()
-    ADDSMETAR_stop_request.clear()
-
-    # Generate the thread object itself
-    adds_metar_thread = ADDSMETARThread(stop_request=ADDSMETAR_stop_request,
-                                            stations = map_config.station_map,
-                                                update_interval=timedelta(seconds = 5),
-                                                stale_data_time=timedelta(seconds = 20)
-    )
-    adds_metar_thread.daemon = True
-    adds_metar_thread.start()
-
-    # Create the MainLoop object to run the map
-    metarmap_loop = MainLoop(config = map_config, metar_source=adds_metar_thread)
-
-    # Run the loop as many times as you'd like
-    metarmap_loop_timer_buffer: deque[float] = deque([],maxlen=25)
-    try:
-        while True:
-            loop_length = median_function_timer(metarmap_loop_timer_buffer, metarmap_loop.loop)
-            print(f'METARMAP_loop Run Time: {loop_length}')
-            if metarmap_loop.metar_source.is_running:
-                print('METAR AGE: {metarmap_loop.current_metar_state_age}')
-    except KeyboardInterrupt:
-        logger.critical('Loop Ended by Keyboard Interrupt')
+        # Apply the color map to the LED output as defined by the configuration
+        self._update_LEDs()
