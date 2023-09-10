@@ -102,7 +102,7 @@ def parse_METAR_xml(metarXML: str, logger: logging.Logger | None = None) -> dict
 				# For valid METAR children that are being monitored, 
 				# First reset the METAR object to default
 				# Then process their children
-				result[station_id] = METAR()
+				result[station_id] = METAR(station = station_id)
 				for element in child:
 					# Check if the METAR object has an attribute defined for this property
 					if hasattr(result[station_id],element.tag):

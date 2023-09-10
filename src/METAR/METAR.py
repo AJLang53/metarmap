@@ -1,230 +1,219 @@
+from __future__ import annotations
 import logging
+from typing import TypeVar
+T = TypeVar("T")
+
 from datetime import datetime, timezone
 
+def try_cast(cast_str: str | T, cast_type: T, exception_logger: logging.Logger | None = None) -> T | None:
+    """Attempts to cast the string into the type provided, returns None on any type of failure"""
+    # Trivial case, already done
+    if isinstance(cast_str, cast_type):
+        return cast_str
+    else:
+        try:
+            cast_val = cast_type(cast_str)
+            return cast_val
+        except Exception as e:
+            if exception_logger is not None:
+                exception_logger.exception(f'Failed to cast string {cast_str} to {cast_type}')
+            else:
+                pass
+        return None
+
 class METAR:
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        self._raw_text = None
-        self._observation_time = None
-        self._latitude = None
-        self._longitude = None
-        self._temp_c = None
-        self._dewpoint_c = None
-        self._wind_dir_degrees = None
-        self._wind_speed_kt = None
-        self._wind_gust_kt = None
-        self._visibility_statute_mi = None
-        self._altim_in_hg = None
-        self._sea_level_pressure_mb = None
-        self._wx_string = None
-        self._flight_category = None
-        self._precip_in = None
-        self._metar_type = None
-        self._elevation_m = None
-        self._quality_control_flag = None
-        self._sky_condition = []
+    """Object to represent an FAA METAR"""
+    def __init__(self, station: str | None = None, raw_text: str | None = None, observation_time: datetime | None = None,
+                 latitude: float | None = None, longitude: float | None = None,
+                 temp_c: float | None = None, dewpoint_c: float | None = None,
+                 wind_dir_degrees: float | None = None, wind_speed_kt: int | None = None,
+                 wind_gust_kt: float | None = None, visibility_statute_mi: float | None = None,
+                 altim_in_hg: float | None = None, sea_level_pressure_mb: float | None = None,
+                 wx_string: str | None = None, flight_category: str | None = None,
+                 precip_in: float | None = None, metar_type: str | None = None,
+                 elevation_m: float | None = None, quality_control_flag: str | None = None,
+                 sky_condition: list[dict[str, str | int]] | None = None,
+                 logger: logging.Logger | None = None):
+        
+        # Optional logger object can be provided, otherwise it'll make its own for logging issues
+        if logger is None:
+            self.logger: logging.Logger = logging.getLogger(f'{self.__class__.__name__}')
+        else:
+            self.logger = logger
+
+        # Direct attributes
+        self.station = station
+        self.raw_text = raw_text
+        self.flight_category = flight_category
+        self.metar_type = metar_type
+        self.quality_control_flag = quality_control_flag
+
+        # Attributes that can be taken as string or resulting object (require setter method)
+        self._observation_time = observation_time
+        self._latitude = latitude
+        self._longitude = longitude
+        self._temp_c = temp_c
+        self._dewpoint_c = dewpoint_c
+        self._wind_dir_degrees = wind_dir_degrees
+        self._wind_speed_kt = wind_speed_kt
+        self._wind_gust_kt = wind_gust_kt
+        self._visibility_statute_mi = visibility_statute_mi
+        self._altim_in_hg = altim_in_hg
+        self._sea_level_pressure_mb = sea_level_pressure_mb
+        self._precip_in = precip_in
+        self._elevation_m = elevation_m
+        self._sky_condition = sky_condition
+
+        # TODO finish this
+        self._wx_string = wx_string
         return
     
     def __repr__(self):
-        return f'METAR: {self._raw_text}'
-    
-    @property
-    def raw_text(self):
-        return self._raw_text
-
-    @raw_text.setter
-    def raw_text(self,raw_text):
-        self._raw_text = raw_text
+        return f'METAR: {self.raw_text}'
 
     @property
-    def observation_time(self):
+    def observation_time(self) -> datetime:
         return self._observation_time
     
     @observation_time.setter
-    def observation_time(self,observation_time: str):
-        '''
-        Convert observation_time to datetime object for easier use later
-        '''
-        observationTimeObj = None
-        try:
-            year = int(observation_time.split('T')[0].split('-')[0])
-            month = int(observation_time.split('T')[0].split('-')[1])
-            day = int(observation_time.split('T')[0].split('-')[2])
-            hourzulu = int(observation_time.split('T')[1].split(':')[0])
-            minute = int(observation_time.split('T')[1].split(':')[1])
-            second = int(observation_time.split('T')[1].split(':')[2].split('Z')[0])
-        except:
-            self.logger.exception('Error parsing observationTime')
-
-        try:
-            observationTimeObj = datetime(year,month,day,hourzulu,minute,second,tzinfo=timezone.utc)
-        except:
-            self.logger.exception(f'Error creating datetime object for observationTime: {observation_time}')
-
-        if observationTimeObj != None:
-            self._observation_time = observationTimeObj
-        else:
+    def observation_time(self,observation_time: datetime | str):
+        """Observation time can be provided as a METAR format string or a datetime object"""
+        if isinstance(observation_time, datetime):
             self._observation_time = observation_time
+            return
+        else:
+            # Attempt the conversion, leave as None if it fails
+            try:
+                year = int(observation_time.split('T')[0].split('-')[0])
+                month = int(observation_time.split('T')[0].split('-')[1])
+                day = int(observation_time.split('T')[0].split('-')[2])
+                hourzulu = int(observation_time.split('T')[1].split(':')[0])
+                minute = int(observation_time.split('T')[1].split(':')[1])
+                second = int(observation_time.split('T')[1].split(':')[2].split('Z')[0])
+                self._observation_time = datetime(year,month,day,hourzulu,minute,second,tzinfo=timezone.utc)
+            except:
+                self.logger.exception(f'Error creating datetime object for observationTime: {observation_time}')
+                return
 
     @property
-    def latitude(self):
+    def latitude(self) -> float | None:
         return self._latitude
     
     @latitude.setter
-    def latitude(self,val):
-        float_val = None
-        try:
-            float_val = float(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to float')
-        if float_val != None:
-            self._latitude = float_val
-        else:
-            self._latitude = val
+    def latitude(self,val: str | float) -> None:
+        """Attempt conversion"""
+        cast_val = try_cast(val, float, self.logger)
+        if cast_val is not None:
+            self._latitude = cast_val
+        return
 
     @property
-    def longitude(self):
+    def longitude(self) -> float | None:
         return self._longitude
     
     @longitude.setter
-    def longitude(self,val):
-        float_val = None
-        try:
-            float_val = float(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to float')
-        if float_val != None:
-            self._longitude = float_val
-        else:
-            self._longitude = val
+    def longitude(self,val: str | float) -> None:
+        """Attempt conversion"""
+        cast_val = try_cast(val, float, self.logger)
+        if cast_val is not None:
+            self._longitude = cast_val
+        return
 
     @property
-    def temp_c(self):
+    def temp_c(self) -> float | None:
         return self._temp_c
     
     @temp_c.setter
-    def temp_c(self,val):
-        float_val = None
-        try:
-            float_val = float(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to float')
-        if float_val != None:
-            self._temp_c = float_val
-        else:
-            self._temp_c = val
+    def temp_c(self,val: str | float) -> None:
+        """attempt conversion to float"""
+        cast_val = try_cast(val, float, self.logger)
+        if cast_val is not None:
+            self._temp_c = cast_val
+        return
 
     @property
-    def dewpoint_c(self):
+    def dewpoint_c(self) -> float | None:
         return self._temp_c
     
     @dewpoint_c.setter
-    def dewpoint_c(self,val):
-        float_val = None
-        try:
-            float_val = float(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to float')
-        if float_val != None:
-            self._dewpoint_c = float_val
-        else:
-            self._dewpoint_c = val
+    def dewpoint_c(self,val: str | float) -> None:
+        """attempt conversion to float"""
+        cast_val = try_cast(val, float, self.logger)
+        if cast_val is not None:
+            self._dewpoint_c = cast_val
+        return
 
     @property
-    def wind_dir_degrees(self):
+    def wind_dir_degrees(self) -> float | None:
         return self._wind_dir_degrees
     
     @wind_dir_degrees.setter
-    def wind_dir_degrees(self,val):
-        float_val = None
-        try:
-            float_val = float(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to float')
-        if float_val != None:
-            self._wind_dir_degrees = float_val
-        else:
-            self._wind_dir_degrees = val
+    def wind_dir_degrees(self,val: str | float) -> None:
+        """attempt conversion to float"""
+        cast_val = try_cast(val, float, self.logger)
+        if cast_val is not None:
+            self._wind_dir_degrees = cast_val
+        return
 
     @property
-    def wind_speed_kt(self):
+    def wind_speed_kt(self) -> int | None:
         return self._wind_speed_kt
     
     @wind_speed_kt.setter
-    def wind_speed_kt(self,val):
-        int_val = None
-        try:
-            int_val = int(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to int')
-        if int_val != None:
-            self._wind_speed_kt = int_val
-        else:
-            self._wind_speed_kt = val
+    def wind_speed_kt(self,val: str | int) -> None:
+        """attempt conversion to float"""
+        cast_val = try_cast(val, int, self.logger)
+        if cast_val is not None:
+            self._wind_speed_kt = cast_val
+        return
 
     @property
-    def wind_gust_kt(self):
+    def wind_gust_kt(self) -> int | None:
         return self._wind_gust_kt
     
     @wind_gust_kt.setter
-    def wind_gust_kt(self,val):
-        int_val = None
-        try:
-            int_val = int(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to int')
-        if int_val != None:
-            self._wind_gust_kt = int_val
-        else:
-            self._wind_gust_kt = val
+    def wind_gust_kt(self,val: str | int) -> None:
+        """attempt conversion to float"""
+        cast_val = try_cast(val, int, self.logger)
+        if cast_val is not None:
+            self._wind_gust_kt = cast_val
+        return
 
     @property
-    def visibility_statute_mi(self):
+    def visibility_statute_mi(self) -> float | None:
         return self._visibility_statute_mi
     
     @visibility_statute_mi.setter
-    def visibility_statute_mi(self,val):
-        float_val = None
-        try:
-            float_val = float(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to float')
-        if float_val != None:
-            self._visibility_statute_mi = float_val
-        else:
-            self._visibility_statute_mi = val
+    def visibility_statute_mi(self,val: float | str) -> None:
+        """attempt conversion to float"""
+        cast_val = try_cast(val, float, self.logger)
+        if cast_val is not None:
+            self._visibility_statute_mi = cast_val
+        return
 
     @property
-    def altim_in_hg(self):
+    def altim_in_hg(self) -> float | None:
         return self._altim_in_hg
     
     @altim_in_hg.setter
-    def altim_in_hg(self,val):
-        float_val = None
-        try:
-            float_val = float(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to float')
-        if float_val != None:
-            self._altim_in_hg = float_val
-        else:
-            self._altim_in_hg = val
+    def altim_in_hg(self,val: float | str) -> None:
+        """attempt conversion to float"""
+        cast_val = try_cast(val, float, self.logger)
+        if cast_val is not None:
+            self._altim_in_hg = cast_val
+        return
 
     @property
-    def sea_level_pressure_mb(self):
+    def sea_level_pressure_mb(self) -> float | None:
         return self._sea_level_pressure_mb
     
     @sea_level_pressure_mb.setter
-    def sea_level_pressure_mb(self,val):
-        float_val = None
-        try:
-            float_val = float(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to float')
-        if float_val != None:
-            self._sea_level_pressure_mb = float_val
-        else:
-            self._sea_level_pressure_mb = val
+    def sea_level_pressure_mb(self,val: float | str) -> None:
+        """attempt conversion to float"""
+        cast_val = try_cast(val, float, self.logger)
+        if cast_val is not None:
+            self._sea_level_pressure_mb = cast_val
+        return
 
     @property
     def wx_string(self):
@@ -238,63 +227,31 @@ class METAR:
         self._wx_string = val
 
     @property
-    def flight_category(self):
-        return self._flight_category
-    
-    @flight_category.setter
-    def flight_category(self,val):
-        self._flight_category = val
-
-    @property
-    def precip_in(self):
-        return self._sea_level_pressure_mb
+    def precip_in(self) -> float | None:
+        return self._precip_in
     
     @precip_in.setter
-    def precip_in(self,val):
-        float_val = None
-        try:
-            float_val = float(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to float')
-        if float_val != None:
-            self._precip_in = float_val
-        else:
-            self._precip_in = val
-
-    @property
-    def metar_type(self):
-        return self._metar_type
+    def precip_in(self,val: float | str) -> None:
+        """attempt conversion to float"""
+        cast_val = try_cast(val, float, self.logger)
+        if cast_val is not None:
+            self._precip_in = cast_val
+        return
     
-    @metar_type.setter
-    def metar_type(self,val):
-        self._metar_type = val
-
     @property
-    def elevation_m(self):
+    def elevation_m(self) -> float | None:
         return self._elevation_m
     
     @elevation_m.setter
-    def elevation_m(self,val):
-        float_val = None
-        try:
-            float_val = float(val)
-        except Exception as e:
-            self.logger.exception(f'Failed converting {val} to float')
-        if float_val != None:
-            self._elevation_m = float_val
-        else:
-            self._elevation_m = val
+    def elevation_m(self,val: float | str) -> None:
+        """attempt conversion to float"""
+        cast_val = try_cast(val, float, self.logger)
+        if cast_val is not None:
+            self._elevation_m = cast_val
+        return
 
     @property
-    def quality_control_flag(self):
-        return self._quality_control_flag
-    
-    @quality_control_flag.setter
-    def quality_control_flag(self,val):
-        self._quality_control_flag = val
-
-    @property
-    def sky_condition(self):
+    def sky_condition(self) -> list[dict[str, str | int]] | None:
         return self._sky_condition
     
     def add_sky_condition(self,sky_cover: str, cloud_base_ft_agl):

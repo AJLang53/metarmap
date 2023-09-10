@@ -35,6 +35,7 @@ def initialize_rotating_file_log(logger: logging.Logger,
     
     Default parameters are 25, 10 Mb file for a total of 250mb stored log
 
+    #TODO
     If manage_directory is set, then the system will first check how many unique .log items are in the directory
     If there are more than the cycles_count parameter, it will delete them starting with the oldest
     """
