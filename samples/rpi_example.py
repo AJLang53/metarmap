@@ -65,7 +65,7 @@ def main():
         try:
             while True:
                 loop_length = median_function_timer(metarmap_loop_timer_buffer, metarmap_loop.loop)
-                print(metarmap_loop)
+                print(metarmap_loop.stations)
                 # print(f'METARMAP_loop Run Time: {loop_length}')
                 # if metarmap_loop.metar_source.is_running:
                 #     print(f'METAR AGE: {metarmap_loop.current_metar_state_age}')

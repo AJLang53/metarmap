@@ -55,6 +55,7 @@ class RPi_zero_NeoPixel_LED_Driver(LED_DRIVER):
         """Update the LED at the index to the color provided"""
         if self.config.order == neopixel.GRB:
             self._neopixel[index] = [color.g, color.r, color.b]
+            self._neopixel.show()
         else:
             raise NotImplementedError(f'Non-GRB color ordering is not implemented')
         

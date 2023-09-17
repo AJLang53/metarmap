@@ -59,10 +59,10 @@ class Day_Night_Dimming_Config:
 
 class METAR_COLOR_CONFIG:
     """Configuration of colors for METAR conditions"""
-    def __init__(self, color_vfr: RGB_color = RGB_color(255,0,0), color_vfr_fade: RGB_color = RGB_color(125,0,0),
+    def __init__(self, color_vfr: RGB_color = RGB_color(0,255,0), color_vfr_fade: RGB_color = RGB_color(0,125,0),
                  color_mvfr: RGB_color = RGB_color(0,0,255), color_mvfr_fade: RGB_color = RGB_color(0,0,125),
-                 color_ifr: RGB_color = RGB_color(0,255,0), color_ifr_fade: RGB_color = RGB_color(0,125,0),
-                 color_lifr: RGB_color = RGB_color(0,125,125), color_lifr_fade: RGB_color = RGB_color(0,75,75),
+                 color_ifr: RGB_color = RGB_color(255,0,0), color_ifr_fade: RGB_color = RGB_color(125,0,0),
+                 color_lifr: RGB_color = RGB_color(125,0,125), color_lifr_fade: RGB_color = RGB_color(75,0,75),
                  color_clear: RGB_color = RGB_color(0,0,0),
                  color_lightning: RGB_color = RGB_color(255,255,255),
                  color_high_winds: RGB_color = RGB_color(255,255,0)

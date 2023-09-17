@@ -92,7 +92,7 @@ class METAR:
                 second = int(observation_time.split('T')[1].split(':')[2].split('Z')[0])
                 self._observation_time = datetime(year,month,day,hourzulu,minute,second,tzinfo=timezone.utc)
             except:
-                self.logger.exception(f'Error creating datetime object for observationTime: {observation_time}')
+                self.logger.error(f'Error creating datetime object for observationTime: {observation_time}')
                 return
 
     @property
@@ -266,7 +266,7 @@ class METAR:
                 int_cloud_base_ft_agl = int(cloud_base_ft_agl)
                 cloud_base_ft_agl = int_cloud_base_ft_agl
             except Exception as e:
-                self.logger.exception(f'Failed converting {cloud_base_ft_agl} to float')
+                self.logger.error(f'Failed converting {cloud_base_ft_agl} to float')
 
         sky_condition_dict = {
             'sky_cover': sky_cover,
@@ -275,4 +275,4 @@ class METAR:
         try:
             self._sky_condition.append(sky_condition_dict)
         except Exception as e:
-            self.logger.exception(f'Failed to append sky condition to list')
+            self.logger.error(f'Failed to append sky condition to list')
