@@ -57,3 +57,9 @@ class RPi_zero_NeoPixel_LED_Driver(LED_DRIVER):
             self._neopixel[index] = [color.g, color.r, color.b]
         else:
             raise NotImplementedError(f'Non-GRB color ordering is not implemented')
+        
+    def close(self) -> None:
+        """
+        Release the GPIO pin and deactivate LEDs
+        """
+        self._neopixel.deinit()

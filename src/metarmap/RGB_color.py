@@ -30,6 +30,9 @@ class RGB_color:
         self.b = b
         return
     
+    def __repr__(self):
+        return f'{self.__class__.__name__}: ({self.r}, {self.g}, {self.b})'
+
     @property
     def r(self) -> int:
         return self._r
@@ -44,7 +47,7 @@ class RGB_color:
     
     @property
     def g(self) -> int:
-        return self._r
+        return self._g
     
     @g.setter
     def g(self, new_g: int) -> None:
@@ -56,7 +59,7 @@ class RGB_color:
     
     @property
     def b(self) -> int:
-        return self._r
+        return self._b
     
     @b.setter
     def b(self, new_b: int) -> None:

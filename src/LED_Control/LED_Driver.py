@@ -10,3 +10,6 @@ class LED_DRIVER(typing.Protocol):
 
     def update_LED(self, index: int, color: RGB_color) -> None:
         """Update the LED provided by index to the color provided by the RGB_color object"""
+
+    def close(self) -> None:
+        """Shutdown procedure for the driver, turn off the lights and release the hardware"""

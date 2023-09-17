@@ -58,18 +58,19 @@ def main():
     adds_metar_thread.start()
 
     # Create the MainLoop object to run the map
-    metarmap_loop = MainLoop(config = map_config, metar_source=adds_metar_thread)
+    with MainLoop(config = map_config, metar_source=adds_metar_thread) as metarmap_loop:
 
-    # Run the loop as many times as you'd like
-    metarmap_loop_timer_buffer: deque[float] = deque([],maxlen=25)
-    try:
-        while True:
-            loop_length = median_function_timer(metarmap_loop_timer_buffer, metarmap_loop.loop)
-            print(f'METARMAP_loop Run Time: {loop_length}')
-            if metarmap_loop.metar_source.is_running:
-                print(f'METAR AGE: {metarmap_loop.current_metar_state_age}')
-    except KeyboardInterrupt:
-        logger.critical('Loop Ended by Keyboard Interrupt')
+        # Run the loop as many times as you'd like
+        metarmap_loop_timer_buffer: deque[float] = deque([],maxlen=25)
+        try:
+            while True:
+                loop_length = median_function_timer(metarmap_loop_timer_buffer, metarmap_loop.loop)
+                print(metarmap_loop)
+                # print(f'METARMAP_loop Run Time: {loop_length}')
+                # if metarmap_loop.metar_source.is_running:
+                #     print(f'METAR AGE: {metarmap_loop.current_metar_state_age}')
+        except KeyboardInterrupt:
+            logger.critical('Loop Ended by Keyboard Interrupt')
 
 if __name__ == '__main__':
     sys.exit(main())

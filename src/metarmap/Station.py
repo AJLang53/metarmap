@@ -14,6 +14,9 @@ class Station:
             self.active_color = active_color
         return
     
+    def __repr__(self):
+        return f'{self.__class__.__name__}: idx = {self.idx}, id = {self.id}, pin_index = {self.pin_index}, color = {self._active_color}'
+    
     @property
     def active_color(self):
         return self._active_color

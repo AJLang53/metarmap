@@ -1,6 +1,7 @@
 from __future__ import annotations
 from threading import Event
 import typing
+from types import TracebackType
 import logging
 from datetime import datetime, timedelta
 
@@ -66,6 +67,17 @@ class MainLoop:
     def __repr__(self):
         return f'METARMAP MainLoop: {self.config}'
     
+    def __enter__(self) -> MainLoop:
+        """Allow the use of with statement with this object, will ensure close is called"""
+        return self
+
+    def __exit__(self,exception_type: typing.Optional[typing.Type[BaseException]],exception_value: typing.Optional[BaseException],traceback: typing.Optional[TracebackType],
+    ) -> None:
+        """Call cleanup operations"""
+        self.close()
+        return
+
+
     @property
     def current_metar_state_age(self) -> timedelta:
         """Return time since last update (age of current date)"""
@@ -182,3 +194,7 @@ class MainLoop:
 
         # Apply the color map to the LED output as defined by the configuration
         self._update_LEDs()
+
+    def close(self):
+        if self.config.led_driver is not None:
+            self.config.led_driver.close()
