@@ -254,7 +254,7 @@ class METAR:
     def sky_condition(self) -> list[dict[str, str | int]] | None:
         return self._sky_condition
     
-    def add_sky_condition(self,sky_cover: str, cloud_base_ft_agl):
+    def add_sky_condition(self,sky_cover: str | None, cloud_base_ft_agl: int | str | None) -> None:
         '''
         Appends the sky condition to the sky_condition list
         Each sky condition comes in the following form <sky_condition sky_cover="FEW" cloud_base_ft_agl="4300"/>
@@ -262,17 +262,10 @@ class METAR:
         '''
 
         if cloud_base_ft_agl is not None:
-            try:
-                int_cloud_base_ft_agl = int(cloud_base_ft_agl)
-                cloud_base_ft_agl = int_cloud_base_ft_agl
-            except Exception as e:
-                self.logger.error(f'Failed converting {cloud_base_ft_agl} to float')
+            cloud_base_ft_agl = try_cast(cloud_base_ft_agl, int, self.logger)
 
         sky_condition_dict = {
             'sky_cover': sky_cover,
             'cloud_base_ft_agl': cloud_base_ft_agl
         }
-        try:
-            self._sky_condition.append(sky_condition_dict)
-        except Exception as e:
-            self.logger.error(f'Failed to append sky condition to list')
+        self._sky_condition.append(sky_condition_dict)

@@ -110,17 +110,17 @@ def parse_METAR_xml(metarXML: str, logger: logging.Logger | None = None) -> dict
 						# If it does, run it
 						try:
 							setattr(result[station_id],element.tag,element.text)
-						except AttributeError as AE:
+						except AttributeError:
 							# Sky Condition is not expected to have a setter, apply behavior here
 							if element.tag == 'sky_condition':
 								try:
 									cloud_base_ft_agl = element.attrib['cloud_base_ft_agl']
-								except:
+								except KeyError:
 									cloud_base_ft_agl = None
 
 								try:
 									sky_cover = element.attrib['sky_cover']
-								except:
+								except KeyError:
 									sky_cover = None
 								result[station_id].add_sky_condition(
 									sky_cover = sky_cover,
