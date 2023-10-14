@@ -16,6 +16,9 @@ class Random_Blink_Manager:
     duration: typing.Optional[timedelta] = None
     running: bool = False
 
+    def __post_init__(self):
+        self.initialize(False)
+
     def initialize(self, start_state: bool):
         """Initialize the object for a blinking period"""
         self.state = start_state
@@ -23,12 +26,12 @@ class Random_Blink_Manager:
         self.update_durations(self.get_blink_duration())
         self.running = True
 
-    def stop(self):
-        """Deinitialize the object for blink disabled"""
-        self.state = False
-        self.start = None
-        self.duration = None
-        self.running = False
+    # def stop(self):
+    #     """Deinitialize the object for blink disabled"""
+    #     self.state = False
+    #     self.start = None
+    #     self.duration = None
+    #     self.running = False
 
     def get_blink_duration(self) -> timedelta:
         """Generate a random timedelta between blink_time_min and blink_time_max"""
@@ -47,8 +50,8 @@ class Random_Blink_Manager:
         # if self.state is None or self.start is None or self.duration is None:
         #     raise AttributeError(f'blink called on uninitialized {self.__class__.__name__}: {self}')
         
-        if not self.running:
-            self.initialize(False)
+        # if not self.running:
+        #     self.initialize(False)
 
         # If the duration has elapsed, flip the state
         if self.state:
@@ -64,7 +67,7 @@ class Random_Blink_Manager:
         
         else:
             pass
-        return
+        return self.state
 
 class Station:
     """Object to hold information about a station light on the METAR MAP"""

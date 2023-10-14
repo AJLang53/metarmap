@@ -182,21 +182,23 @@ class MainLoop:
         # High Wind feature first
         # If over the gust or wind threshold for high wind, run blink and grab the output
         if gust_speed > high_threshold or wind_speed > high_threshold:
-            station.high_wind_state.blink()
-            if station.high_wind_state.state:
+            # if not station.high_wind_state.running:
+            #     station.high_wind_state.initialize()
+            if station.high_wind_state.blink():
                 return self.config.metar_colors.color_high_winds
 
         # Low wind blink second
         elif wind_speed > blink_threshold:
-            station.wind_state.blink()
-            if station.wind_state.state:
+            # if not station.wind_state.running:
+            #     station.wind_state.initialize()
+            if station.wind_state.blink():
                 return self.config.metar_colors.fade(color)
         # Otherwise, stop the blinking and deinitialize it if it was running
-        else:
-            if station.high_wind_state.running:
-                station.high_wind_state.stop()
-            if station.wind_state.running:
-                station.wind_state.stop()
+        # else:
+        #     if station.high_wind_state.running:
+        #         station.high_wind_state.stop()
+        #     if station.wind_state.running:
+        #         station.wind_state.stop()
 
         return color
     
