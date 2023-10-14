@@ -9,7 +9,7 @@ from random import random
 # Core Module Imports
 from METAR import METAR
 from metarmap.METAR_Map_Config import METAR_MAP_Config
-from metarmap.Station import Station
+from metarmap.Station import Station, Random_Blink_Manager
 from metarmap.RGB_color import RGB_color, apply_brightness
 
 # LED Driver
@@ -43,12 +43,22 @@ class MainLoop:
         self._current_metar_state = None   # Holder for the current metar state of the map
         self._current_metar_state_datetime: timedelta | None = None      # The age of the live data
 
+        wind_blink_manager: Random_Blink_Manager | None = None
+        wind_gust_manager: Random_Blink_Manager | None = None
+        if self.config.wind_animation.enabled:
+            if self.config.wind_animation.blink_threshold is not None:
+                wind_blink_manager = Random_Blink_Manager(blink_time_min=5, blink_time_max=8, duty_cycle=0.01)
+            if self.config.wind_animation.high_wind_threshold is not None:
+                wind_gust_manager = Random_Blink_Manager(blink_time_min=5, blink_time_max=8, duty_cycle=0.01)
+
         # The map holds the list of stations to track their LED states
         self.stations: list[Station] = []
         for idx, station_id in enumerate(self.config.station_map):
             self.stations.append(Station(
                 idx = idx, id = station_id, pin_index = self.config.station_map[station_id], 
-                active_color=self.config.metar_colors.color_clear
+                active_color=self.config.metar_colors.color_clear,
+                wind_blink_manager = wind_blink_manager,
+                wind_gust_manager = wind_gust_manager
             ))
 
         return

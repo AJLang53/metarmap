@@ -69,16 +69,16 @@ class Random_Blink_Manager:
 class Station:
     """Object to hold information about a station light on the METAR MAP"""
     def __init__(self, idx: int, id: str, pin_index: int, active_color: RGB_color | None = None,
-                 blink_time_min: float = 1.5, blink_time_max: float = 3):
+                 wind_blink_manager: Random_Blink_Manager | None = None, wind_gust_manager: Random_Blink_Manager | None = None):
         self.idx = idx
         self.id = id
         self.pin_index = pin_index
         self._active_color = None
         self.updated = False
 
-        self.wind_state: Random_Blink_Manager = Random_Blink_Manager(blink_time_min=blink_time_min, blink_time_max=blink_time_max, duty_cycle=0.1)
-        self.high_wind_state: Random_Blink_Manager = Random_Blink_Manager(blink_time_min=blink_time_min, blink_time_max=blink_time_max, duty_cycle=0.1)
-        self.lightning_state: Random_Blink_Manager = Random_Blink_Manager(blink_time_min=blink_time_min, blink_time_max=blink_time_max, duty_cycle=0.1)
+        self.wind_state: Random_Blink_Manager | None = wind_blink_manager
+        self.high_wind_state: Random_Blink_Manager | None = wind_gust_manager
+        self.lightning_state: Random_Blink_Manager | None = None
 
         if active_color is not None:
             self.active_color = active_color

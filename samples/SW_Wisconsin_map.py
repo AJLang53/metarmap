@@ -3,8 +3,6 @@ import logging
 from datetime import timedelta
 from pathlib import Path
 
-from threading import Event
-
 # Module imports
 from metarmap.MainLoop import MainLoop
 from metarmap.METAR_Map_Config import METAR_MAP_Config, METAR_COLOR_CONFIG, Day_Night_Dimming_Config, Wind_Animation_Config
@@ -81,7 +79,7 @@ map_config  = METAR_MAP_Config(
 def main():
     initialize_basic_log_stream(logging.getLogger(), logging.INFO)
     initialize_rotating_file_log(logging.getLogger(), output_directory = Path(__file__).parent.parent / 'logs', output_name = f'{map_config.name}', 
-                                 fileLevel= map_config.logging_level, max_bytes = 10*1024*1024, backupCount=25)
+                                 fileLevel= map_config.logging_level, max_bytes = 10*1024*1024, backup_count=25)
     logger = logging.getLogger('main_function')
 
     # Create the MainLoop object to run the map
