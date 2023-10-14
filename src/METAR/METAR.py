@@ -62,7 +62,10 @@ class METAR:
         self._sea_level_pressure_mb = sea_level_pressure_mb
         self._precip_in = precip_in
         self._elevation_m = elevation_m
-        self._sky_condition = sky_condition
+        if sky_condition is None:
+            self._sky_condition = []
+        else:
+            self._sky_condition = sky_condition
 
         # TODO finish this
         self._wx_string = wx_string

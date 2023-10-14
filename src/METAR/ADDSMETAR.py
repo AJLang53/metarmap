@@ -1,5 +1,6 @@
 from __future__ import annotations
 import urllib.request
+from urllib.error import URLError, HTTPError, ContentTooShortError
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -14,32 +15,56 @@ adds_metar_data_server_base_url = ''.join((
 		r'mostRecentForEachStation=constraint&',
 		r'hoursBeforeNow=24&'))
 
-def retrieve_METAR_of_station(station_id: str) -> METAR | None:
-	'''
-	Returns METAR of provided station ID from live lookup
+class METAR_Retrieve_Failure(Exception):
+	"""Exception for failure to retrieve METAR for various reasons"""
 
-	Returns None if it could not be retrieved or parsed
+def retrieve_METAR_of_stations(station_id_list: list[str],
+							   logger: logging.Logger = logging.getLogger('retrieve_METAR_of_stations')
+							   ) -> list[METAR | None]:
 	'''
-	metar_data: METAR | None = None
+	Retrieves and parses METAR data for a list of stations provided by their station IDs
 
+	:param station_id_list: list of station ID strings to generate METARs from
+	:return: list of METAR objects (or None if failure) corresponding to station IDs in argument list
+	'''
+	# Initialize the return list
+	metar_data_list: list[METAR | None] = [None]*len(station_id_list)
+
+	# Combine the station_id_list into the safe string
+	station_id_str = get_ADDS_station_list_string(station_id_list)
+	logger.debug(f'Station String: {station_id_str}')
+
+	# Get the request URL to the ADDS server
 	url = ''.join((adds_metar_data_server_base_url,
-		f'stationString={station_id}'
+		f'stationString={station_id_str}'
 	))
+	logger.debug(f'URL: {url}')
 
-	# Grab the METAR data
+	# Retrieve the server result the METAR data
 	with urllib.request.urlopen(url) as metarURL:
 		result_xml = metarURL.read()
+	if result_xml == None:
+		logger.debug(f'No XML from url: {url}')
+		raise METAR_Retrieve_Failure(f'No xml received from URL requests: {url}')
 
-	if result_xml != None:
+	# Parse the retrieved data
+	try:
 		result_dict = parse_METAR_xml(result_xml)
-	
-	if result_dict is not None:
-		try:
-			metar_data = result_dict[station_id]
-		except KeyError:
-			pass
+	except ValueError:
+		logger.debug(f'parsing failure')
+		raise METAR_Retrieve_Failure(f'Failure to parse retrieved METAR xml from url: {url}')
 
-	return metar_data
+	# Populate the output list with the retrieved data
+	for station_id in station_id_list:
+		try:
+			station_metar = result_dict[station_id]
+		except KeyError:
+			logger.warning(f'Unexpected station in result xml: {station_id}')
+			continue
+		else:
+			metar_data_list[station_id_list.index(station_id)] = station_metar
+
+	return metar_data_list
 
 # Helper function for XML parsing
 def searchForTag(root,elemTag):
@@ -62,6 +87,7 @@ def parse_METAR_xml(metarXML: str, logger: logging.Logger | None = None) -> dict
 	METAR objects for each station
 	'''
 
+	# Initialize the result dictionary
 	result: dict[str, METAR] = {}
 	if logger is None:
 		logger = logging.getLogger(f'parse_METAR_XML')
@@ -73,63 +99,86 @@ def parse_METAR_xml(metarXML: str, logger: logging.Logger | None = None) -> dict
 	# Get the data tag, and check that there is a num_results attribute
 	data = searchForTag(root,'data')
 	if data == None:
-		logger.debug(f'Found no data element in xml: {metarXML}')
-		return
-	else:
-		try:
-			num_results = data.attrib['num_results']
-			logger.debug(f'Found data element with {num_results} result')
-		except KeyError:
-			logger.warning('Data element did not have a num_results attribute')
-			return
+		raise ValueError(f'Found no data element in xml: {metarXML}')
+	
+	try:
+		num_results = data.attrib['num_results']
+		logger.debug(f'Found data element with {num_results} result')
+	except KeyError:
+		raise ValueError(f'Data element did not have a num_results attribute')
 		
-		# There should be children "METAR", each defining one result
-		for child in data:
-			# Get all METAR children
-			if child.tag != 'METAR':
-				logger.warning(f'Non-METAR element found under data: {child.tag}')
+	# There should be children <METAR> tags, each defining one station result
+	for child in data:
+		# Get all METAR children
+		if child.tag != 'METAR':
+			logger.warning(f'Non-METAR element found under <data>: {child.tag}')
+			continue
+		else:
+			# Get the station_id, log error if not found and pass on this tag
+			# The result dict can't handle an unidentified result
+			station_id = searchForTag(child,'station_id')
+			logger.debug(f'Found station_id: {station_id.text}')
+			if station_id == None:
+				logger.error(f'No Station ID found for METAR: {child}')
 				continue
-			else:
-				station_id = searchForTag(child,'station_id')
-				logger.debug(f'Found station_id: {station_id.text}')
-				# Log an error if there is no station ID
-				if station_id == None:
-					logger.error(f'No Station ID found for METAR: {child}')
-					continue
-		
-				station_id = station_id.text
-		
-				# For valid METAR children that are being monitored, 
-				# First reset the METAR object to default
-				# Then process their children
-				result[station_id] = METAR(station = station_id)
-				for element in child:
-					# Check if the METAR object has an attribute defined for this property
-					if hasattr(result[station_id],element.tag):
-						logger.debug(f'{station_id} has attr {element.tag}: {element.text}')
-						# If it does, run it
-						try:
-							setattr(result[station_id],element.tag,element.text)
-						except AttributeError:
-							# Sky Condition is not expected to have a setter, apply behavior here
-							if element.tag == 'sky_condition':
-								try:
-									cloud_base_ft_agl = element.attrib['cloud_base_ft_agl']
-								except KeyError:
-									cloud_base_ft_agl = None
+			
+			# The station_id is the inner text of the xml tag
+			station_id = station_id.text
+	
+			# For valid METAR children, we need to add the station_id as a key into the dict, and then
+			# parse the child tags into the METAR data object
+			result[station_id] = METAR(station = station_id)	# Initialize blank METAR object
+			for element in child:
+				# Check if the METAR object has an attribute defined for this property
+				# Properties of the METAR object align with these labels
+				if hasattr(result[station_id],element.tag):
+					logger.debug(f'{station_id} has attr {element.tag}: {element.text}')
+					# If it does, set it
+					try:
+						setattr(result[station_id],element.tag,element.text)
+					except AttributeError:
+						# Handle tags that do not support setters
+						if element.tag == 'sky_condition':
+							try:
+								cloud_base_ft_agl = element.attrib['cloud_base_ft_agl']
+							except KeyError:
+								cloud_base_ft_agl = None
 
-								try:
-									sky_cover = element.attrib['sky_cover']
-								except KeyError:
-									sky_cover = None
-								result[station_id].add_sky_condition(
-									sky_cover = sky_cover,
-									cloud_base_ft_agl = cloud_base_ft_agl
-									)
-							else:
-								logger.error(f'Unexpected Attribute in METAR dataset: {element.tag}')
-								continue
+							try:
+								sky_cover = element.attrib['sky_cover']
+							except KeyError:
+								sky_cover = None
+							result[station_id].add_sky_condition(
+								sky_cover = sky_cover,
+								cloud_base_ft_agl = cloud_base_ft_agl
+								)
+						else:
+							logger.error(f'Unexpected Attribute in METAR dataset: {element.tag}')
+							continue
 	return result
+
+def check_ADDS_Server_Connection(logger: logging.Logger = logging.getLogger('check_ADDS_Server_Connection')) -> bool:
+	"""Attempts to reach the aviationweather.gov/adds/dataserver, returns success as bool"""
+	success = False
+	try:
+		urllib.request.urlopen(r'https://www.aviationweather.gov/adds/dataserver_current')
+		success = True
+		logger.debug('Successfully connected to ADDS dataserver')
+	except (URLError, HTTPError, ContentTooShortError):
+		logger.exception(f'Unable to connect to ADDS dataserver at {datetime.now()}')
+	
+	return success
+
+def get_ADDS_station_list_string(station_id_list: list[str]) -> str:
+	"""
+	Produces a string of the list that can be inserted into the http reques
+	
+	:param station_id_list: The list of stations ids to produce the string from
+	:return: string of ids joined properly
+	"""
+	station_id_url_str = ''
+	station_id_url_str = '%20'.join(station_id_list)
+	return station_id_url_str
 
 class ADDSMETAR:
 	"""Object to manage a pre-determined set of stations and retrieve updated METAR data"""
@@ -150,45 +199,7 @@ class ADDSMETAR:
 		Property: the list of station ids being monitored
 		Sources from the metar_data dictionary so it remains up to date with additions
 		'''
-		station_id_list = None
-		try:
-			station_id_list = list(self._metar_data.keys())
-			return station_id_list
-		except Exception as e:
-			self._logger.exception(f'Failed to get list of station ID keys')
-			raise Exception(f'Failed to get list of station ID keys')
-	
-	@property
-	def station_id_url_str(self) -> str:
-		'''
-		Property: the list of station ids being monitored as a url safe string
-		Sources from the metar_data dictionary so it remains up to date with additions
-		'''
-		station_id_url_str = ''
-		id_list = self.station_id_list
-		station_id_url_str = '%20'.join(id_list)
-		return station_id_url_str
-	
-	def get_METAR_of_station(self, station_id: str):
-		"""Provide the cached METAR data for the station_id"""
-		metar_data = None
-		try:
-			metar_data = self._metar_data[station_id]
-		except KeyError:
-			self._logger.exception(f'Tried to access METAR of station not being monitored: {station_id}')
-		return metar_data
-
-	def _check_ADDS_Server_Connection(self) -> bool:
-		"""Attempts to reach the aviationweather.gov/adds/dataserver, returns success as bool"""
-		success = False
-		try:
-			urllib.request.urlopen(r'https://www.aviationweather.gov/adds/dataserver_current')
-			success = True
-			self._logger.debug('Successfully connected to ADDS dataserver')
-		except urllib.request.URLError as e:
-			self._logger.warning(f'Unable to connect to ADDS dataserver at {datetime.now()}')
-		
-		return success
+		return list(self._metar_data.keys())
 
 	def update_METAR_data(self) -> bool:
 		'''
@@ -196,45 +207,54 @@ class ADDSMETAR:
 		Source is aviationweather.gov dataserver
 		'''
 
-		id_str = self.station_id_url_str
-		url = ''.join((adds_metar_data_server_base_url,
-			f'stationString={id_str}'
-		))
-
-		success = True
-		result_xml = None
-
-		# Grab the METAR data
 		try:
-			with urllib.request.urlopen(url) as metarURL:
-				result_xml = metarURL.read()
-				self._logger.debug(f'Retrived {result_xml} from {url}')
-		except Exception as e:
-			self._logger.exception(f'Failed to retrieve data from URL: {url}')
-			success = False
+			metar_list = retrieve_METAR_of_stations(self.station_id_list)
+		except METAR_Retrieve_Failure:
+			self._logger.error(f'Failure to retrieve METAR data at {datetime.now()}')
+			pass
+		else:
+			for station in self.station_id_list:
+				self._metar_data[station] = metar_list[self.station_id_list.index(station)]
+			return True
+		return False
 
-		if result_xml != None:
-			try:
-				result_dict = parse_METAR_xml(result_xml)
-				self._metar_data = result_dict
-			except:
-				self._logger.exception('Parsing Failure')
-				success = False
+		# id_str = self.station_id_url_str
+		# url = ''.join((adds_metar_data_server_base_url,
+		# 	f'stationString={id_str}'
+		# ))
 
-		return success
+		# success = True
+		# result_xml = None
+
+		# # Grab the METAR data
+		# try:
+		# 	with urllib.request.urlopen(url) as metarURL:
+		# 		result_xml = metarURL.read()
+		# 		self._logger.debug(f'Retrived {result_xml} from {url}')
+		# except Exception as e:
+		# 	self._logger.exception(f'Failed to retrieve data from URL: {url}')
+		# 	success = False
+
+		# if result_xml != None:
+		# 	try:
+		# 		result_dict = parse_METAR_xml(result_xml)
+		# 		self._metar_data = result_dict
+		# 	except:
+		# 		self._logger.exception('Parsing Failure')
+		# 		success = False
+
+		# return success
 	
-	def add_station(self, station_id: str) -> bool:
+	def add_station(self, station_id: str) -> None:
 		"""
 		Add a station ID by str to the metar_data dict
-		
-		Attempt to acquire a METAR for the station ID, do not add if failure to retrieve
-		Return True if added, False if not
 		"""
-		if self._check_ADDS_Server_Connection():		# If we can reach the server, check the station METAR
-			if retrieve_METAR_of_station(station_id) is not None:
-				self._metar_data[station_id] = METAR()
-				return True
-		return False
+		self._metar_data[station_id] = METAR()
+		# if check_ADDS_Server_Connection():		# If we can reach the server, check the station METAR
+		# 	if retrieve_METAR_of_stations([station_id]) is not None:
+		# 		self._metar_data[station_id] = METAR()
+		# 		return True
+		# return False
 	
 	def remove_station(self, station_id: str):
 		"""Remove a station from the station_id list to track"""
@@ -245,11 +265,11 @@ class ADDSMETAR:
 			pass
 		return
 	
-if __name__ == '__main__':
-	station_id = 'KSLE'
-	result = retrieve_METAR_of_station(station_id)
-	print(result)
+# if __name__ == '__main__':
+# 	station_id = 'KSLE'
+# 	result = retrieve_METAR_of_station(station_id)
+# 	print(result)
 
-	metar_set = ADDSMETAR(['KOSH', 'KSLE', 'KONP'])
-	metar_set.update_METAR_data()
-	print(metar_set.get_METAR_of_station('KSLE'))
+	# metar_set = ADDSMETAR(['KOSH', 'KSLE', 'KONP'])
+	# metar_set.update_METAR_data()
+	# print(metar_set.get_METAR_of_station('KSLE'))

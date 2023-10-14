@@ -8,6 +8,10 @@ class LED_DRIVER(typing.Protocol):
     def LED_index_colors(self) -> dict[int, RGB_color]:
         """Return a dictionary of the current state of the LEDs under control by the object"""
 
+    @property
+    def is_valid(self) -> bool:
+        """Property, current LED_DRIVER is in a valid runnable state"""
+
     def update_LED(self, index: int, color: RGB_color) -> None:
         """Update the LED provided by index to the color provided by the RGB_color object"""
 

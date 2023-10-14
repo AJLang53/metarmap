@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta
 
 # Python Threading
-from threading import Thread, Event, Lock, get_ident
+from threading import Thread, Lock, get_ident
 
 # Module Imports
 from METAR.ADDSMETAR import ADDSMETAR, METAR
@@ -21,17 +21,15 @@ class ADDSMETARThread(ADDSMETAR, Thread):
     A thread that manages stations periodically to make available station METAR data through its queues
     '''
 
-    def __init__(self, stop_request: Event,
+    def __init__(self,
                 stations: list[str] | None = None,
                 update_interval: timedelta = timedelta(seconds = 900),        # 15 minute update default
                 stale_data_time: timedelta = timedelta(seconds = 5220),        # 1 Hour, 45 minutes for stale data defaults
+                wait_to_run: bool = False
                 ):
         self._logger = logging.getLogger(f'{self.__class__.__name__}')
         self._stop = False      # Internal stop, used to stop loop from within thread
     
-        # Setup Events
-        self.stop_request = stop_request                                    # stop request event that can be used to kill the thread    
-
         # Set up thread-safe metar data dict and new data flag
         self._live_metar_data_lock = Lock()
         self._live_metar_data: dict[str, METAR] | None = None
@@ -48,17 +46,21 @@ class ADDSMETARThread(ADDSMETAR, Thread):
         self._update_interval: timedelta = update_interval        # Setup interval time for updates
         self._stale_data_time: timedelta = stale_data_time          # Setup interval time for stale data timeout
 
-        # Get the First Update
-        if self._check_ADDS_Server_Connection():
-            if not self._check_update_METAR_data():
-                self._logger.warning(f'Initial updateMETARData call in ADDSMETARThread __init__ failed to successfully update data dictionary')
-            else:
-                self.update_METAR_data()
-        else:
-            self._logger.warning('No internet connection available in initializer for ADDSMETAR Thread')
+        # # Get the First Update
+        # if check_ADDS_Server_Connection():
+        #     if not self._check_update_METAR_data():
+        #         self._logger.warning(f'Initial updateMETARData call in ADDSMETARThread __init__ failed to successfully update data dictionary')
+        #     else:
+        #         self.update_METAR_data()
+        # else:
+        #     self._logger.warning('No internet connection available in initializer for ADDSMETAR Thread')
 
         self._last_attempt_time = datetime.now()        # Time object to synchronize updates
-    
+
+        if not wait_to_run:
+            self.daemon = True
+            self.start()
+
     @property
     def live_metar_data(self) -> dict[str, METAR] | None:
         """Thread-safe method to acquire the active METAR data dictionary of the thread"""
@@ -138,9 +140,10 @@ class ADDSMETARThread(ADDSMETAR, Thread):
         
         # If enough time has elapsed and the METAR data can be successfully updated, push data onto the queue
         # and update the success_time to the curren time
-        if self._check_time_delta_against_interval() and self._check_update_METAR_data():
-            self._update_live_METAR()
-            self._last_success_time = datetime.now()
+        if self._check_time_delta_against_interval() or self._live_metar_data is None:
+            if self._check_update_METAR_data():
+                self._update_live_METAR()
+                self._last_success_time = datetime.now()
             
         # Check if the current data in the queue is stale
         if self._check_for_stale_data():
@@ -158,11 +161,10 @@ class ADDSMETARThread(ADDSMETAR, Thread):
         
         # Clear stop flags
         self._stop = False
-        self.stop_request.clear()
         self._is_running = True
         
         # Run loop until stop flag
-        while not self.stop_request.is_set() and not self._stop:
+        while not self._stop:
             self.loop()
         self._is_running = False
             

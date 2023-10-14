@@ -4,6 +4,7 @@ import typing
 from types import TracebackType
 import logging
 from datetime import datetime, timedelta
+from random import random
 
 # Core Module Imports
 from METAR import METAR
@@ -19,42 +20,30 @@ try:
 except NotImplementedError:
     pass
 
-class METAR_SOURCE(typing.Protocol):
-    """Defines a valid METAR data source for the METARMAP loop to pull data from"""
-    @property
-    def new_metar_data(self) -> bool:
-        """new_metar_data property, signals if there is new data """
-
-    @new_metar_data.setter
-    def new_metar_data(self, state: bool) -> None:
-        """new_metar_data property must be settable by the retrieving object"""
-
-    @property
-    def live_metar_data(self) -> dict[str, METAR]:
-        """
-        The live_metar_data property should return a dictionary with key as station ID and value as
-        METAR objects
-        """
-
-    @property
-    def is_running(self) -> bool:
-        """
-        Returns if the METAR_SOURCE is still running functionally and can return valid data
-        """
+def get_time_delta_to_event(event_time: datetime) -> timedelta:
+    '''
+    Compare the current time against the event_time provided
+    '''
+    currentTime = datetime.now()
+    time_delta = currentTime - event_time
+    return time_delta
 
 class MainLoop:
     '''
     Main program loop, handles the side threads and takes the configuration
     '''
 
-    def __init__(self, config: METAR_MAP_Config, metar_source: METAR_SOURCE):
+    def __init__(self, config: METAR_MAP_Config):
         self._logger = logging.getLogger(f'{self.__class__.__name__}')
 
+        # A METAR_MAP_Config object defines all necessary elements of the system
         self.config: METAR_MAP_Config = config
-        self.metar_source: METAR_SOURCE = metar_source  # METAR datasource that conforms to the protocol
 
-        self._current_metar_state = {}   # Holder for the current metar state of the map
+        # The map holds the current METAR state that will drive the LEDs
+        self._current_metar_state = None   # Holder for the current metar state of the map
         self._current_metar_state_datetime: timedelta | None = None      # The age of the live data
+
+        # The map holds the list of stations to track their LED states
         self.stations: list[Station] = []
         for idx, station_id in enumerate(self.config.station_map):
             self.stations.append(Station(
@@ -71,12 +60,13 @@ class MainLoop:
         """Allow the use of with statement with this object, will ensure close is called"""
         return self
 
-    def __exit__(self,exception_type: typing.Optional[typing.Type[BaseException]],exception_value: typing.Optional[BaseException],traceback: typing.Optional[TracebackType],
+    def __exit__(self,exception_type: typing.Optional[typing.Type[BaseException]],
+                 exception_value: typing.Optional[BaseException],
+                 traceback: typing.Optional[TracebackType],
     ) -> None:
         """Call cleanup operations"""
         self.close()
         return
-
 
     @property
     def current_metar_state_age(self) -> timedelta:
@@ -93,19 +83,36 @@ class MainLoop:
         except KeyError:
             self._logger.error(f'No METAR data for station: {station_id}')
         return metar_data
+    
+    def _time_for_new_data(self) -> bool:
+        """
+        Check the current time against the age of the current METAR data, 
+        and return True if a new METAR should be retrieved from the METAR_SOURCE
+        
+        :return: bool, True if new METAR data should be retrieved
+        """
+        # If there is no current metar data (age is None), then it's time to request
+        if self.current_metar_state_age is None:
+            return True
+        
+        # If the age is greater than the update interval, then it's time to request
+        if self.current_metar_state_age > self.config.update_interval:
+            return True
+        
+        return False
 
     def _check_for_new_METAR_data(self) -> None:
         """
         Check if the metar_source has signaled new data is available
         If it is, get the live_metar_data and set the signal to false
         """
-        if self.metar_source.new_metar_data:            # If there's new data from the source
+        # If there's new data from the source (or we have no data at all)
+        if self.config.metar_source.new_metar_data or self._current_metar_state is None:            
             self._logger.debug(f'new metar data signaled')
-            new_metar_dict = self.metar_source.live_metar_data       # Get the live data
+            new_metar_dict = self.config.metar_source.live_metar_data       # Get the live data
             self._current_metar_state = new_metar_dict              # Set the current data dict to the new data
             self._current_metar_state_datetime = datetime.now()
-            self.metar_source.new_metar_data = False                # Set the new data flag to false
-
+            self.config.metar_source.new_metar_data = False                # Set the new data flag to false
 
     def _process_flight_category(self, station_metar: METAR) -> RGB_color:
         """Handle the flight category for the base color"""
@@ -137,8 +144,51 @@ class MainLoop:
 
         return modified_color
 
-    def _process_wind(self, *args, **kwargs):
-        return
+    def _process_wind(self, color: RGB_color, station: Station, station_metar: METAR) -> RGB_color:
+        """
+        If a station is deemed Windy, and the Wind feature is enabled, the station should psuedo-random and
+        periodically blink to the fade color and back
+        """
+        # If the feature is disabled, don't do anything
+        if not self.config.wind_animation_enabled:
+            return color
+        
+        # For None states, set to effective infinity value for always failed comparisons
+        blink_threshold = self.config.wind_animation.blink_threshold
+        if blink_threshold is None:
+            blink_threshold = 9e25
+        high_threshold = self.config.wind_animation.high_wind_threshold
+        if high_threshold is None:
+            high_threshold = 9e25
+
+        # 0 out speed and gust if not present
+        wind_speed = station_metar.wind_speed_kt
+        if wind_speed is None:
+            wind_speed = 0
+        gust_speed = station_metar.wind_gust_kt
+        if gust_speed is None:
+            gust_speed = 0
+
+        # High Wind feature first
+        # If over the gust or wind threshold for high wind, run blink and grab the output
+        if gust_speed > high_threshold or wind_speed > high_threshold:
+            station.high_wind_state.blink()
+            if station.high_wind_state.state:
+                return self.config.metar_colors.color_high_winds
+
+        # Low wind blink second
+        elif wind_speed > blink_threshold:
+            station.wind_state.blink()
+            if station.wind_state.state:
+                return self.config.metar_colors.fade(color)
+        # Otherwise, stop the blinking and deinitialize it if it was running
+        else:
+            if station.high_wind_state.running:
+                station.high_wind_state.stop()
+            if station.wind_state.running:
+                station.wind_state.stop()
+
+        return color
     
     def _process_lightning(self, *args, **kwargs):
         return
@@ -146,8 +196,17 @@ class MainLoop:
     def _update_color_map(self) -> None:
         """Update the color map between stations and their pixels using the metar data"""
 
-        for station_id in self._current_metar_state:
-            station_metar = self._current_metar_state[station_id]
+        # No color to update if there's no active METAR state
+        if self._current_metar_state is None:
+            return
+        
+        # Get the station state and the METAR data
+        for station in self.stations:
+            try:
+                station_metar = self._current_metar_state[station.id]
+            except KeyError:
+                self._logger.error(f'No METAR data for station: {station}')
+                continue
 
             try:
                 color = self._process_flight_category(station_metar)
@@ -156,17 +215,15 @@ class MainLoop:
             except ValueError as ve:
                 self._logger.error(f'Error encountered in process_flight_category for station_id: {station_id}, METAR: {station_metar}')
                 continue
+            
+            wind_color = self._process_wind(color, station, station_metar)
+            # lightning_color = self._process_lightning(station_metar)
 
-            wind_color = self._process_wind(station_metar)
-            lightning_color = self._process_lightning(station_metar)
-
-            brightness_modified_color = self._process_brightness(color)
+            brightness_modified_color = self._process_brightness(wind_color)
 
             # Apply the result to the object station list
-            # This is correlating the station list to the station-METAR dictionary
-            for station in self.stations:
-                if station.id == station_id:
-                    station.active_color = brightness_modified_color
+            station.active_color = brightness_modified_color
+            
         return
 
     def _update_LEDs(self) -> None:

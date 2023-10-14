@@ -1,14 +1,19 @@
 from __future__ import annotations
 import logging
-from datetime import datetime
-from dataclasses import dataclass
-from pathlib import Path
+from datetime import datetime, timedelta
 
 # Module Imports
+from metarmap.METAR_SOURCE import METAR_SOURCE
 from metarmap.utils import is_between_sunrise_sunset
 from metarmap.RGB_color import RGB_color
 from LED_Control.LED_Driver import LED_DRIVER
 
+class Wind_Animation_Config:
+    """Configure the wind animation feature"""
+    def __init__(self, enabled: bool, blink_threshold: int | None, high_wind_threshold: int | None):
+        self.enabled = enabled
+        self.blink_threshold = blink_threshold
+        self.high_wind_threshold = high_wind_threshold
 
 class Day_Night_Dimming_Config:
     """Configuraiton for day-night dimming feature"""
@@ -79,18 +84,30 @@ class METAR_COLOR_CONFIG:
         self.color_lightning = color_lightning
         self.color_high_winds = color_high_winds
         return
+    
+    def fade(self, color: RGB_color) -> RGB_color:
+        """Apply the Fade effect to a color to produce the faded version"""
+        fade_color = RGB_color(r = int(color.r/2), g = int(color.g/2), b = int(color.b/2))
+        return fade_color
 
 class METAR_MAP_Config:
     """Configuration of the METAR MAP"""
-    def __init__(self, logging_level: int = logging.INFO, station_map: dict[str, int] = {}, 
+    def __init__(self, name: str, 
+                 metar_source: METAR_SOURCE,
+                 logging_level: int = logging.INFO, 
+                 station_map: dict[str, int] = {}, 
                  led_driver: LED_DRIVER | None = None, 
                  metar_colors_config: METAR_COLOR_CONFIG = METAR_COLOR_CONFIG(),     # Apply default color config if not provided
                  day_night_dimming_config: Day_Night_Dimming_Config | None = None,
-
-                 
+                 wind_animation_config: Wind_Animation_Config | None = None
                  ):
         
-        # Basic items
+        # Book-keeping items
+        self.name = name
+        self.logging_level = logging_level
+
+        # Map Specifics
+        self.metar_source = metar_source
         self.station_map = station_map
         self.led_driver = led_driver
         self.metar_colors = metar_colors_config
@@ -99,18 +116,26 @@ class METAR_MAP_Config:
         # Day-Night Dimming
         self.day_night_dimming = day_night_dimming_config
 
+        # Wind Animation
+        self.wind_animation = wind_animation_config
+
     @property
     def led_enabled(self) -> bool:
         """led_enabled property, True if there is a valid LED_driver"""
         if self.led_driver is not None:
-            if self.led_driver.is_valid:
-                return True
+            return self.led_driver.is_valid
         return False
     
     @property 
     def day_night_dimming_enabled(self) -> bool:
         """day_night_dimming feature proprety, True if the configuration is present and valid"""
         if self.day_night_dimming is not None:
-            if self.day_night_dimming.valid:
-                return True
+            return self.day_night_dimming.valid
+        return False
+
+    @property
+    def wind_animation_enabled(self) -> bool:
+        """wind_animation feature property, True if the configuration is present and valid"""
+        if self.wind_animation is not None:
+            return self.wind_animation.enabled
         return False
