@@ -72,8 +72,8 @@ map_config  = METAR_MAP_Config(
 
     wind_animation_config = Wind_Animation_Config(
     enabled=True,
-    blink_threshold=5,
-    high_wind_threshold=15
+    blink_threshold=15,
+    high_wind_threshold=25
 )
 
 )
@@ -85,7 +85,7 @@ def main():
     logger = logging.getLogger('main_function')
 
     # Create the MainLoop object to run the map
-    with MainLoop(config = map_config, metar_source=adds_metar_thread) as metarmap_loop:
+    with MainLoop(config = map_config) as metarmap_loop:
 
         # Run the loop as many times as you'd like
         logger.info('Running Loop...')

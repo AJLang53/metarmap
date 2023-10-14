@@ -213,7 +213,7 @@ class MainLoop:
             # A ValueError is raised if the station_metar does not have a supported flight category
             # Log the error, but continue through the loop (ignore this case, hopefully a new METAR will resolve it)
             except ValueError as ve:
-                self._logger.error(f'Error encountered in process_flight_category for station_id: {station_id}, METAR: {station_metar}')
+                self._logger.error(f'Error encountered in process_flight_category for station_id: {station.id}, METAR: {station_metar}')
                 continue
             
             wind_color = self._process_wind(color, station, station_metar)

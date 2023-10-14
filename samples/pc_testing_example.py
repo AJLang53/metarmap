@@ -14,10 +14,19 @@ from metarmap.Logging import initialize_basic_log_stream, initialize_rotating_fi
 from metarmap.utils import median_function_timer
 
 station_map = {
-    'KSLE': 0,
-    'KONP': 1,
-    'KOSH': 2
+    'KMKE': 30,
+    'KMWC': 31,
+    'KUES': 32,
+    'KRYV': 34,
+    'KMSN': 36,
+    'KDLL': 38,
+    'KUNU': 41,
+    'KSBM': 44,
+    'KFLD': 46,
+    'KOSH': 47,
+    'KY50': 49
 }
+
 
 # Generate the thread object itself
 adds_metar_thread = ADDSMETARThread(
@@ -31,12 +40,13 @@ adds_metar_thread = ADDSMETARThread(
 metar_colors_config=METAR_COLOR_CONFIG()
 led_driver= None
 day_night_dimming_config = Day_Night_Dimming_Config(
-    day_night_dimming=True,
-    brightness_dim=0.1,
-    use_sunrise_sunet=True,
-    day_night_latitude=45,
-    day_night_longitude=-93
+    day_night_dimming = True,
+    brightness_dim = 0.1,
+    use_sunrise_sunet = True,
+    day_night_latitude = 43.0389,
+    day_night_longitude = -87.9065
 )
+
 wind_animation_config = Wind_Animation_Config(
     enabled=True,
     blink_threshold=5,

@@ -8,9 +8,9 @@ def apply_brightness(rgb_color: RGB_color, brightness: float) -> RGB_color:
     Brightness must be a float between 0 and 1.0
     """
     if brightness >= 0.0 and brightness <= 1.0:
-        return RGB_color(rgb_color.r * brightness,
-                         rgb_color.g * brightness,
-                         rgb_color.b * brightness
+        return RGB_color(int(rgb_color.r * brightness),
+                         int(rgb_color.g * brightness),
+                         int(rgb_color.b * brightness)
                          )
     else:
         raise ValueError(f'Brightness must be a float between 0 and 1.0')
