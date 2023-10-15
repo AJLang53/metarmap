@@ -6,7 +6,7 @@ from pathlib import Path
 
 from threading import Event
 
-from metarmap import MainLoop, METAR_MAP_Config, METAR_COLOR_CONFIG, Day_Night_Dimming_Config, Wind_Animation_Config
+from metarmap import MainLoop, METAR_MAP_Config, METAR_COLOR_CONFIG, Day_Night_Dimming_Config, Wind_Animation_Config, Lightning_Animation_Config
 from METAR import ADDSMETARThread
 
 from metarmap.Logging import initialize_basic_log_stream, initialize_rotating_file_log
@@ -47,11 +47,8 @@ day_night_dimming_config = Day_Night_Dimming_Config(
     day_night_longitude = -87.9065
 )
 
-wind_animation_config = Wind_Animation_Config(
-    enabled=True,
-    blink_threshold=5,
-    high_wind_threshold=15
-)
+wind_animation_config = Wind_Animation_Config(enabled = True)
+lightning_animation_config = Lightning_Animation_Config(enabled = True)
 
 map_config  = METAR_MAP_Config(
     name = 'PC_Test_map',
@@ -60,7 +57,8 @@ map_config  = METAR_MAP_Config(
     led_driver=led_driver,
     metar_colors_config=metar_colors_config,
     day_night_dimming_config=day_night_dimming_config,
-    wind_animation_config=wind_animation_config
+    wind_animation_config=wind_animation_config,
+    lightning_animation_config=lightning_animation_config
 )
 
 def main():

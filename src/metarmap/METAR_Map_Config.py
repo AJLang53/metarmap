@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
+from dataclasses import dataclass
 
 # Module Imports
 from metarmap.METAR_SOURCE import METAR_SOURCE
@@ -8,12 +9,28 @@ from metarmap.utils import is_between_sunrise_sunset
 from metarmap.RGB_color import RGB_color
 from LED_Control.LED_Driver import LED_DRIVER
 
+@dataclass
+class Lightning_Animation_Config:
+    """Configure the wind animation feature"""
+    enabled: bool = False
+    cycle_duration_min: float = 5
+    cycle_duration_max: float = 8
+    cycle_duty_cycle: float = 0.3
+
+
+@dataclass
 class Wind_Animation_Config:
     """Configure the wind animation feature"""
-    def __init__(self, enabled: bool, blink_threshold: int | None, high_wind_threshold: int | None):
-        self.enabled = enabled
-        self.blink_threshold = blink_threshold
-        self.high_wind_threshold = high_wind_threshold
+    enabled: bool = False
+    blink_threshold: int = 15
+    blink_duration_min: float = 5
+    blink_duration_max: float = 8
+    blink_duty_cycle: float = 0.2
+    gust_threshold: int = 25
+    gust_duration_min: float = 5
+    gust_duration_max: float = 8
+    gust_duty_cycle: float = 0.2
+
 
 class Day_Night_Dimming_Config:
     """Configuraiton for day-night dimming feature"""
@@ -99,7 +116,8 @@ class METAR_MAP_Config:
                  led_driver: LED_DRIVER | None = None, 
                  metar_colors_config: METAR_COLOR_CONFIG = METAR_COLOR_CONFIG(),     # Apply default color config if not provided
                  day_night_dimming_config: Day_Night_Dimming_Config | None = None,
-                 wind_animation_config: Wind_Animation_Config | None = None
+                 wind_animation_config: Wind_Animation_Config | None = None,
+                 lightning_animation_config: Lightning_Animation_Config | None = None
                  ):
         
         # Book-keeping items
@@ -118,6 +136,9 @@ class METAR_MAP_Config:
 
         # Wind Animation
         self.wind_animation = wind_animation_config
+
+        # Lightning Animation
+        self.lightning_animation = lightning_animation_config
 
     @property
     def led_enabled(self) -> bool:
@@ -138,4 +159,11 @@ class METAR_MAP_Config:
         """wind_animation feature property, True if the configuration is present and valid"""
         if self.wind_animation is not None:
             return self.wind_animation.enabled
+        return False
+    
+    @property
+    def lightning_animation_enabled(self) -> bool:
+        """wind_animation feature property, True if the configuration is present and valid"""
+        if self.lightning_animation is not None:
+            return self.lightning_animation.enabled
         return False

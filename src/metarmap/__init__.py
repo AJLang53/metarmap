@@ -1,2 +1,2 @@
-from metarmap.METAR_Map_Config import METAR_MAP_Config, Day_Night_Dimming_Config, METAR_COLOR_CONFIG, Wind_Animation_Config
+from metarmap.METAR_Map_Config import METAR_MAP_Config, Day_Night_Dimming_Config, METAR_COLOR_CONFIG, Wind_Animation_Config, Lightning_Animation_Config
 from metarmap.MainLoop import MainLoop

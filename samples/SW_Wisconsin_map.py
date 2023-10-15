@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Module imports
 from metarmap.MainLoop import MainLoop
-from metarmap.METAR_Map_Config import METAR_MAP_Config, METAR_COLOR_CONFIG, Day_Night_Dimming_Config, Wind_Animation_Config
+from metarmap.METAR_Map_Config import METAR_MAP_Config, METAR_COLOR_CONFIG, Day_Night_Dimming_Config, Wind_Animation_Config, Lightning_Animation_Config
 
 # METAR SOURCE
 from METAR.ADDS_METAR_Thread import ADDSMETARThread
@@ -68,12 +68,8 @@ map_config  = METAR_MAP_Config(
         day_night_longitude = -87.9065
     ),
 
-    wind_animation_config = Wind_Animation_Config(
-    enabled=True,
-    blink_threshold=15,
-    high_wind_threshold=25
-)
-
+    wind_animation_config = Wind_Animation_Config(enabled = True),
+    lightning_animation_config = Lightning_Animation_Config(enabled = True)
 )
 
 def main():

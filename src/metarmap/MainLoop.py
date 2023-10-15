@@ -9,7 +9,7 @@ from random import random
 # Core Module Imports
 from METAR import METAR
 from metarmap.METAR_Map_Config import METAR_MAP_Config
-from metarmap.Station import Station, Random_Blink_Manager
+from metarmap.Station import Station, Random_Blink_Manager, Burst_Blink_Manager
 from metarmap.RGB_color import RGB_color, apply_brightness
 
 # LED Driver
@@ -47,9 +47,20 @@ class MainLoop:
         wind_gust_manager: Random_Blink_Manager | None = None
         if self.config.wind_animation.enabled:
             if self.config.wind_animation.blink_threshold is not None:
-                wind_blink_manager = Random_Blink_Manager(blink_time_min=5, blink_time_max=8, duty_cycle=0.01)
-            if self.config.wind_animation.high_wind_threshold is not None:
-                wind_gust_manager = Random_Blink_Manager(blink_time_min=5, blink_time_max=8, duty_cycle=0.01)
+                # wind_blink_manager = Random_Blink_Manager(blink_time_min=self.config.wind_animation.blink_duration_min, 
+                #                                           blink_time_max=self.config.wind_animation.blink_duration_min, 
+                #                                           duty_cycle=self.config.wind_animation.blink_duty_cycle)
+                wind_blink_manager = Burst_Blink_Manager(cycle_duration_min=self.config.lightning_animation.cycle_duration_min,
+                                                          cycle_duration_max=self.config.lightning_animation.cycle_duration_max,
+                                                          cycle_duty_cycle=self.config.lightning_animation.cycle_duty_cycle)
+            if self.config.wind_animation.gust_threshold is not None:
+                wind_gust_manager = Random_Blink_Manager(blink_time_min=self.config.wind_animation.gust_duration_min, 
+                                                          blink_time_max=self.config.wind_animation.gust_duration_max, 
+                                                          duty_cycle=self.config.wind_animation.gust_duty_cycle)
+        if self.config.lightning_animation_enabled:
+            lightning_cycle_manager = Burst_Blink_Manager(cycle_duration_min=self.config.lightning_animation.cycle_duration_min,
+                                                          cycle_duration_max=self.config.lightning_animation.cycle_duration_max,
+                                                          cycle_duty_cycle=self.config.lightning_animation.cycle_duty_cycle)
 
         # The map holds the list of stations to track their LED states
         self.stations: list[Station] = []
@@ -58,7 +69,8 @@ class MainLoop:
                 idx = idx, id = station_id, pin_index = self.config.station_map[station_id], 
                 active_color=self.config.metar_colors.color_clear,
                 wind_blink_manager = wind_blink_manager,
-                wind_gust_manager = wind_gust_manager
+                wind_gust_manager = wind_gust_manager,
+                lightning_cycle_manager = lightning_cycle_manager
             ))
 
         return
@@ -167,9 +179,9 @@ class MainLoop:
         blink_threshold = self.config.wind_animation.blink_threshold
         if blink_threshold is None:
             blink_threshold = 9e25
-        high_threshold = self.config.wind_animation.high_wind_threshold
-        if high_threshold is None:
-            high_threshold = 9e25
+        gust_threshold = self.config.wind_animation.gust_threshold
+        if gust_threshold is None:
+            gust_threshold = 9e25
 
         # 0 out speed and gust if not present
         wind_speed = station_metar.wind_speed_kt
@@ -181,29 +193,46 @@ class MainLoop:
 
         # High Wind feature first
         # If over the gust or wind threshold for high wind, run blink and grab the output
-        if gust_speed > high_threshold or wind_speed > high_threshold:
-            # if not station.high_wind_state.running:
-            #     station.high_wind_state.initialize()
+        if gust_speed > gust_threshold or wind_speed > gust_threshold:
             if station.high_wind_state.blink():
                 return self.config.metar_colors.color_high_winds
 
         # Low wind blink second
         elif wind_speed > blink_threshold:
-            # if not station.wind_state.running:
-            #     station.wind_state.initialize()
             if station.wind_state.blink():
                 return self.config.metar_colors.fade(color)
-        # Otherwise, stop the blinking and deinitialize it if it was running
-        # else:
-        #     if station.high_wind_state.running:
-        #         station.high_wind_state.stop()
-        #     if station.wind_state.running:
-        #         station.wind_state.stop()
 
         return color
     
-    def _process_lightning(self, *args, **kwargs):
-        return
+    def _process_lightning(self, color: RGB_color, station: Station, station_metar: METAR) -> RGB_color:
+        """
+        Lightning can be identified in the METAR raw_text by the following strings:
+         - LTG
+         - TS
+         - TSNO
+        If a station has lightning, process the lightning display feature
+        """
+        # If the feature is disabled, don't do anything
+        if not self.config.lightning_enabled:
+            return color
+        
+        lightning_substrings = [
+            'LTG',
+            'TS',
+            'TSNO'
+        ]
+        
+        # Look for the target strings
+        lightning = False
+        for substring in lightning_substrings:
+            if station_metar.raw_text.find(substring, 4):   # Start looking after the station name only
+                lightning = True
+        
+        if lightning:
+            if station.lightning_state.blink():
+                return self.config.metar_colors.color_lightning
+        
+        return color
 
     def _update_color_map(self) -> None:
         """Update the color map between stations and their pixels using the metar data"""
