@@ -11,12 +11,14 @@ from LED_Control.LED_Driver import LED_DRIVER
 
 @dataclass
 class Lightning_Animation_Config:
-    """Configure the wind animation feature"""
+    """Configure the lightning animation feature"""
     enabled: bool = False
     cycle_duration_min: float = 5
     cycle_duration_max: float = 8
     cycle_duty_cycle: float = 0.3
-
+    burst_duration_min: float = 0.01
+    burst_duration_max: float = 0.02
+    burst_duty_cycle: float = 0.5
 
 @dataclass
 class Wind_Animation_Config:

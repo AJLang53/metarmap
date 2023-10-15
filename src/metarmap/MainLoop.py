@@ -47,12 +47,9 @@ class MainLoop:
         wind_gust_manager: Random_Blink_Manager | None = None
         if self.config.wind_animation.enabled:
             if self.config.wind_animation.blink_threshold is not None:
-                # wind_blink_manager = Random_Blink_Manager(blink_time_min=self.config.wind_animation.blink_duration_min, 
-                #                                           blink_time_max=self.config.wind_animation.blink_duration_min, 
-                #                                           duty_cycle=self.config.wind_animation.blink_duty_cycle)
-                wind_blink_manager = Burst_Blink_Manager(cycle_duration_min=self.config.lightning_animation.cycle_duration_min,
-                                                          cycle_duration_max=self.config.lightning_animation.cycle_duration_max,
-                                                          cycle_duty_cycle=self.config.lightning_animation.cycle_duty_cycle)
+                wind_blink_manager = Random_Blink_Manager(blink_time_min=self.config.wind_animation.blink_duration_min, 
+                                                          blink_time_max=self.config.wind_animation.blink_duration_min, 
+                                                          duty_cycle=self.config.wind_animation.blink_duty_cycle)
             if self.config.wind_animation.gust_threshold is not None:
                 wind_gust_manager = Random_Blink_Manager(blink_time_min=self.config.wind_animation.gust_duration_min, 
                                                           blink_time_max=self.config.wind_animation.gust_duration_max, 
@@ -60,7 +57,10 @@ class MainLoop:
         if self.config.lightning_animation_enabled:
             lightning_cycle_manager = Burst_Blink_Manager(cycle_duration_min=self.config.lightning_animation.cycle_duration_min,
                                                           cycle_duration_max=self.config.lightning_animation.cycle_duration_max,
-                                                          cycle_duty_cycle=self.config.lightning_animation.cycle_duty_cycle)
+                                                          cycle_duty_cycle=self.config.lightning_animation.cycle_duty_cycle,
+                                                          burst_duration_min=self.config.lightning_animation.burst_duration_min,
+                                                          burst_duration_max=self.config.lightning_animation.burst_duration_max,
+                                                          burst_duty_cycle=self.config.lightning_animation.burst_duty_cycle)
 
         # The map holds the list of stations to track their LED states
         self.stations: list[Station] = []

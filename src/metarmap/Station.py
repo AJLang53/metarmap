@@ -13,6 +13,10 @@ class Burst_Blink_Manager:
     cycle_duration_max: float
     cycle_duty_cycle: float
 
+    burst_duration_min: float
+    burst_duration_max: float
+    burst_duty_cycle: float
+
     state: bool = False
     cycle_running: bool = False
 
@@ -51,7 +55,7 @@ class Burst_Blink_Manager:
             if now - self.start < self.up_duration:
                 # If there is no Burst manager, create one
                 if self.burst is None:
-                    self.burst = Random_Blink_Manager(0.1,0.15,0.5,False)
+                    self.burst = Random_Blink_Manager(0.01,0.02,0.5,False)
                 
                 # Otherwise, blink the burst manager and use its state in this portion
                 self.state = self.burst.blink()
