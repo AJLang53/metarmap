@@ -1,3 +1,3 @@
 from METAR.METAR import METAR
-from METAR.ADDSMETAR import ADDSMETAR
-from METAR.ADDS_METAR_Thread import ADDSMETARThread
+from METAR.aviation_weather_metar import Aviation_Weather_METAR
+from METAR.Aviation_Weather_METAR_Thread import Aviation_Weather_METAR_Thread

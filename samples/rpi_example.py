@@ -11,7 +11,7 @@ from metarmap.MainLoop import MainLoop
 from metarmap.METAR_Map_Config import METAR_MAP_Config, METAR_COLOR_CONFIG
 
 # METAR SOURCE
-from METAR.ADDS_METAR_Thread import ADDSMETARThread
+from METAR.Aviation_Weather_METAR_Thread import ADDSMETARThread
 
 # LED Driver
 from LED_Control.RPi_zero_NeoPixel_LED_Driver import RPi_zero_NeoPixel_LED_Driver, RPi_zero_NeoPixel_Config

@@ -8,7 +8,7 @@ from metarmap.MainLoop import MainLoop
 from metarmap.METAR_Map_Config import METAR_MAP_Config, METAR_COLOR_CONFIG, Day_Night_Dimming_Config, Wind_Animation_Config, Lightning_Animation_Config
 
 # METAR SOURCE
-from METAR.ADDS_METAR_Thread import ADDSMETARThread
+from METAR.Aviation_Weather_METAR_Thread import Aviation_Weather_METAR_Thread
 
 # LED Driver
 from LED_Control.RPi_zero_NeoPixel_LED_Driver import RPi_zero_NeoPixel_LED_Driver, RPi_zero_NeoPixel_Config
@@ -30,7 +30,7 @@ station_map = {
     'KY50': 49
 }
 
-adds_metar_thread = ADDSMETARThread(
+adds_metar_thread = Aviation_Weather_METAR_Thread(
     stations = station_map,
     update_interval=timedelta(minutes = 15),
     stale_data_time=timedelta(minutes = 90)

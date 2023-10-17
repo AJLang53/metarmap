@@ -136,6 +136,12 @@ class MainLoop:
             self._current_metar_state_datetime = datetime.now()
             self.config.metar_source.new_metar_data = False                # Set the new data flag to false
 
+        if self.config.metar_source.data_is_stale:
+            self._logger.debug(f'metar_source signals that data is stale')
+            for station_id in self._current_metar_state:
+                self._current_metar_state[station_id] = METAR()
+                self._current_metar_state_datetime = None
+
     def _process_flight_category(self, station_metar: METAR) -> RGB_color:
         """Handle the flight category for the base color"""
 

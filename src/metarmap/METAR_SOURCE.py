@@ -24,6 +24,10 @@ class METAR_SOURCE(typing.Protocol):
         """
 
     @property
+    def data_is_stale(self) -> bool:
+        """The data has become stale and is no longer valid, but new data could not be received"""
+
+    @property
     def is_running(self) -> bool:
         """
         Returns if the METAR_SOURCE is still running functionally and can return valid data

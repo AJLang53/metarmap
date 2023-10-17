@@ -4,10 +4,8 @@ from datetime import timedelta
 from collections import deque
 from pathlib import Path
 
-from threading import Event
-
 from metarmap import MainLoop, METAR_MAP_Config, METAR_COLOR_CONFIG, Day_Night_Dimming_Config, Wind_Animation_Config, Lightning_Animation_Config
-from METAR import ADDSMETARThread
+from METAR import Aviation_Weather_METAR_Thread
 
 from metarmap.Logging import initialize_basic_log_stream, initialize_rotating_file_log
 
@@ -29,7 +27,7 @@ station_map = {
 
 
 # Generate the thread object itself
-adds_metar_thread = ADDSMETARThread(
+adds_metar_thread = Aviation_Weather_METAR_Thread(
     stations = station_map,
     update_interval=timedelta(minutes = 15),
     stale_data_time=timedelta(minutes = 90)

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from threading import Thread, Lock, get_ident
 
 # Module Imports
-from METAR.ADDSMETAR import ADDSMETAR, METAR
+from METAR.aviation_weather_metar import Aviation_Weather_METAR, METAR
 
 def get_time_delta_to_event(event_time: datetime) -> timedelta:
     '''
@@ -16,7 +16,7 @@ def get_time_delta_to_event(event_time: datetime) -> timedelta:
     time_delta = currentTime - event_time
     return time_delta
 
-class ADDSMETARThread(ADDSMETAR, Thread):
+class Aviation_Weather_METAR_Thread(Aviation_Weather_METAR, Thread):
     '''
     A thread that manages stations periodically to make available station METAR data through its queues
     '''
@@ -35,25 +35,18 @@ class ADDSMETARThread(ADDSMETAR, Thread):
         self._live_metar_data: dict[str, METAR] | None = None
         self._new_metar_data_lock = Lock()
         self._new_metar_data: bool = False
+        self._data_is_stale_lock = Lock()
+        self._data_is_stale: bool = False
         self._is_running_lock = Lock()
         self._is_running: bool = False
 
         # Initialize parent classes in order
-        ADDSMETAR.__init__(self, stations = stations)
+        Aviation_Weather_METAR.__init__(self, stations = stations)
         Thread.__init__(self)
 
         # Set up configurable times
         self._update_interval: timedelta = update_interval        # Setup interval time for updates
         self._stale_data_time: timedelta = stale_data_time          # Setup interval time for stale data timeout
-
-        # # Get the First Update
-        # if check_ADDS_Server_Connection():
-        #     if not self._check_update_METAR_data():
-        #         self._logger.warning(f'Initial updateMETARData call in ADDSMETARThread __init__ failed to successfully update data dictionary')
-        #     else:
-        #         self.update_METAR_data()
-        # else:
-        #     self._logger.warning('No internet connection available in initializer for ADDSMETAR Thread')
 
         self._last_attempt_time = datetime.now()        # Time object to synchronize updates
 
@@ -81,6 +74,16 @@ class ADDSMETARThread(ADDSMETAR, Thread):
     def new_metar_data(self, new_metar_data_state: bool) -> None:
         with self._new_metar_data_lock:
             self._new_metar_data = new_metar_data_state
+
+    @property
+    def data_is_stale(self) -> bool:
+        with self._data_is_stale_lock:
+            return self._data_is_stale
+        
+    @data_is_stale.setter
+    def data_is_stale(self, new_data_is_stale_state: bool) -> None:
+        with self._data_is_stale_lock:
+            self._data_is_stale = new_data_is_stale_state
 
     @property
     def is_running(self) -> bool:
@@ -126,6 +129,8 @@ class ADDSMETARThread(ADDSMETAR, Thread):
         # Put the metar dict onto the queue
         self.live_metar_data = self._metar_data
         self.new_metar_data = True                # Set the new data flag
+        if self._data_is_stale:                   # Set the stale flag to off
+            self._data_is_stale = False
         return
 
     def loop(self):
@@ -149,6 +154,7 @@ class ADDSMETARThread(ADDSMETAR, Thread):
         if self._check_for_stale_data():
             self._logger.debug('Setting data_is_stale')
             self.live_metar_data = None
+            self.data_is_stale = True
 
     def stop(self) -> None:
         """Internal stop, log action"""
