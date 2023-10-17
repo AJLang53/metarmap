@@ -185,10 +185,18 @@ class METAR:
     @property
     def visibility_statute_mi(self) -> float | None:
         return self._visibility_statute_mi
-    
+
     @visibility_statute_mi.setter
     def visibility_statute_mi(self,val: float | str) -> None:
-        """attempt conversion to float"""
+        """
+        Attempt conversion to float
+        
+        Visibility can come as 10+ if unlimited is being reported, we don't care about this
+        """
+        try:
+            val = val.replace('+','')
+        except AttributeError:
+            pass
         cast_val = try_cast(val, float, self.logger)
         if cast_val is not None:
             self._visibility_statute_mi = cast_val
