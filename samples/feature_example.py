@@ -34,19 +34,19 @@ station_map = {
 
 demo_data = {
     # Demo 1: VFR, Base
-    'DEMO1':  METAR(station = 'DEMO1', flight_category='VFR', wind_speed_kt=0, wind_gust_kt=0),
+    'DEMO1':  METAR(station = 'DEMO1', flight_category='VFR', wind_speed_kt=0, wind_gust_kt=0, raw_text=''),
     # DEMO2: MVFR, Base
-    'DEMO2':  METAR(station = 'DEMO1', flight_category='MVFR', wind_speed_kt=0, wind_gust_kt=0),
+    'DEMO2':  METAR(station = 'DEMO1', flight_category='MVFR', wind_speed_kt=0, wind_gust_kt=0, raw_text=''),
     # DEMO3: IFR, Base
-    'DEMO3':  METAR(station = 'DEMO1', flight_category='IFR', wind_speed_kt=0, wind_gust_kt=0),
+    'DEMO3':  METAR(station = 'DEMO1', flight_category='IFR', wind_speed_kt=0, wind_gust_kt=0, raw_text=''),
     # DEMO4: LIFR, Base
-    'DEMO4':  METAR(station = 'DEMO1', flight_category='LIFR', wind_speed_kt=0, wind_gust_kt=0),
+    'DEMO4':  METAR(station = 'DEMO1', flight_category='LIFR', wind_speed_kt=0, wind_gust_kt=0, raw_text=''),
     # Demo5: VFR, Windy
-    'DEMO5':  METAR(station = 'DEMO1', flight_category='VFR', wind_speed_kt=20, wind_gust_kt=0),
+    'DEMO5':  METAR(station = 'DEMO1', flight_category='VFR', wind_speed_kt=20, wind_gust_kt=0, raw_text=''),
     # Demo6: VFR, Very Windy
-    'DEMO6':  METAR(station = 'DEMO1', flight_category='VFR', wind_speed_kt=30, wind_gust_kt=30),
+    'DEMO6':  METAR(station = 'DEMO1', flight_category='VFR', wind_speed_kt=30, wind_gust_kt=30, raw_text=''),
     # Demo7: IFR, Lightning
-    'DEMO7':  METAR(station = 'DEMO1', flight_category='IFR', wind_speed_kt=0, wind_gust_kt=0, raw_text='LTG'),
+    'DEMO7':  METAR(station = 'DEMO1', flight_category='IFR', wind_speed_kt=0, wind_gust_kt=0, raw_text='DEMO7 LTG'),
 
 }
 
@@ -54,8 +54,9 @@ class Demo_METAR_Source(METAR_SOURCE):
 
     def __init__(self, demo_data: dict[str, METAR], update_interval: timedelta):
         self.demo_data = demo_data
-        self.last_update: datetime.now()
+        self.last_update: datetime = datetime.now()
         self.update_interval = update_interval
+        self._new_metar_data: bool = True
 
     @property
     def live_metar_data(self) -> dict[str, METAR]:
@@ -73,9 +74,11 @@ class Demo_METAR_Source(METAR_SOURCE):
         self.last_update = datetime.now()
         return
     
+    @property
     def data_is_stale(self) -> bool:
         return False
     
+    @property
     def is_running(self) -> bool:
         return True
 
@@ -87,7 +90,7 @@ map_config  = METAR_MAP_Config(
     # stations align with the physical map section and the LEDs in use
     station_map = station_map,
 
-    metar_source=Demo_METAR_Source(demo_data),
+    metar_source=Demo_METAR_Source(demo_data, update_interval=timedelta(minutes=15)),
 
     # Default color config
     metar_colors_config=METAR_COLOR_CONFIG(),

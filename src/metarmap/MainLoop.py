@@ -262,18 +262,31 @@ class MainLoop:
             if station_metar is None:
                 self._logger.error(f'Station: {station.id} has no data in _current_metar_state: {self._current_metar_state}')
                 continue
-
+            
+            color = None
             try:
                 color = self._process_flight_category(station_metar)
             # A ValueError is raised if the station_metar does not have a supported flight category
             # Log the error, but continue through the loop (ignore this case, hopefully a new METAR will resolve it)
             except (ValueError, AttributeError) as e:
                 self._logger.exception(f'Error encountered in process_flight_category for station_id: {station.id}, METAR: {station_metar}')
+                continue
             
-            wind_color = self._process_wind(color, station, station_metar)
-            # lightning_color = self._process_lightning(station_metar)
+            wind_color = color
+            try:
+                wind_color = self._process_wind(color, station, station_metar)
+            except (ValueError, AttributeError) as e:
+                self._logger.exception(f'Error encountered in _process_wind for station_id: {station.id}, METAR: {station_metar}')
+                continue
+            
+            lightning_color = wind_color
+            try:
+                lightning_color = self._process_lightning(color, station, station_metar)
+            except (ValueError, AttributeError) as e:
+                self._logger.exception(f'Error encountered in _process_lightning for station_id: {station.id}, METAR: {station_metar}')
+                continue
 
-            brightness_modified_color = self._process_brightness(wind_color)
+            brightness_modified_color = self._process_brightness(lightning_color)
 
             # Apply the result to the object station list
             station.active_color = brightness_modified_color
