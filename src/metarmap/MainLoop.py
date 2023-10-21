@@ -223,7 +223,7 @@ class MainLoop:
         """
         # If the feature is disabled, don't do anything
         if not self.config.lightning_animation_enabled:
-            return color
+            return False, color
         
         lightning_substrings = [
             'LTG',
@@ -241,7 +241,7 @@ class MainLoop:
         
         if lightning:
             if station.lightning_state.blink():
-                return self.config.metar_colors.color_lightning
+                color = self.config.metar_colors.color_lightning
         
         return lightning, color
 
