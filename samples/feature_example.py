@@ -1,14 +1,15 @@
 import sys
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 from pathlib import Path
+from METAR import METAR
 
 # Module imports
 from metarmap.MainLoop import MainLoop
 from metarmap.METAR_Map_Config import METAR_MAP_Config, METAR_COLOR_CONFIG, Day_Night_Dimming_Config, Wind_Animation_Config, Lightning_Animation_Config
 
 # METAR SOURCE
-from METAR.Aviation_Weather_METAR_Thread import Aviation_Weather_METAR_Thread
+from metarmap.METAR_SOURCE import METAR_SOURCE
 
 # LED Driver
 from LED_Control.RPi_zero_NeoPixel_LED_Driver import RPi_zero_NeoPixel_LED_Driver, RPi_zero_NeoPixel_Config
@@ -17,25 +18,66 @@ import board
 from metarmap.Logging import initialize_basic_log_stream, initialize_rotating_file_log
 
 station_map = {
-    'KETB': 27,
-    'KMKE': 30,
-    'KMWC': 31,
-    'KUES': 32,
-    'KRYV': 34,
-    'KMSN': 36,
-    'KDLL': 38,
-    'KUNU': 41,
-    'KSBM': 44,
-    'KFLD': 46,
-    'KOSH': 47,
-    'KY50': 49
+    'DEMO1': 27,
+    'DEMO2': 30,
+    'DEMO3': 31,
+    'DEMO4': 32,
+    'DEMO5': 34,
+    'DEMO6': 36,
+    'DEMO7': 38,
+    'DEMO8': 41,
+    'DEMO9': 44,
+    'DEMO10': 46,
+    'DEMO11': 47,
+    'DEMO12': 49
 }
 
-adds_metar_thread = Aviation_Weather_METAR_Thread(
-    stations = station_map,
-    update_interval=timedelta(minutes = 15),
-    stale_data_time=timedelta(minutes = 90)
-)
+demo_data = {
+    # Demo 1: VFR, Base
+    'DEMO1':  METAR(station = 'DEMO1', flight_category='VFR', wind_speed_kt=0, wind_gust_kt=0),
+    # DEMO2: MVFR, Base
+    'DEMO2':  METAR(station = 'DEMO1', flight_category='MVFR', wind_speed_kt=0, wind_gust_kt=0),
+    # DEMO3: IFR, Base
+    'DEMO3':  METAR(station = 'DEMO1', flight_category='IFR', wind_speed_kt=0, wind_gust_kt=0),
+    # DEMO4: LIFR, Base
+    'DEMO4':  METAR(station = 'DEMO1', flight_category='LIFR', wind_speed_kt=0, wind_gust_kt=0),
+    # Demo5: VFR, Windy
+    'DEMO5':  METAR(station = 'DEMO1', flight_category='VFR', wind_speed_kt=20, wind_gust_kt=0),
+    # Demo6: VFR, Very Windy
+    'DEMO6':  METAR(station = 'DEMO1', flight_category='VFR', wind_speed_kt=30, wind_gust_kt=30),
+    # Demo7: IFR, Lightning
+    'DEMO7':  METAR(station = 'DEMO1', flight_category='IFR', wind_speed_kt=0, wind_gust_kt=0, raw_text='LTG'),
+
+}
+
+class Demo_METAR_Source(METAR_SOURCE):
+
+    def __init__(self, demo_data: dict[str, METAR], update_interval: timedelta):
+        self.demo_data = demo_data
+        self.last_update: datetime.now()
+        self.update_interval = update_interval
+
+    @property
+    def live_metar_data(self) -> dict[str, METAR]:
+        return self.demo_data
+    
+    @property
+    def new_metar_data(self) -> bool:
+        if datetime.now() > (self.last_update + self.update_interval):
+            self._new_metar_data = True
+        return self._new_metar_data
+    
+    @new_metar_data.setter
+    def new_metar_data(self, new_state: bool) -> None:
+        self._new_metar_data = new_state
+        self.last_update = datetime.now()
+        return
+    
+    def data_is_stale(self) -> bool:
+        return False
+    
+    def is_running(self) -> bool:
+        return True
 
 # Map configuration
 map_config  = METAR_MAP_Config(
@@ -45,7 +87,7 @@ map_config  = METAR_MAP_Config(
     # stations align with the physical map section and the LEDs in use
     station_map = station_map,
 
-    metar_source=adds_metar_thread,
+    metar_source=Demo_METAR_Source(demo_data),
 
     # Default color config
     metar_colors_config=METAR_COLOR_CONFIG(),

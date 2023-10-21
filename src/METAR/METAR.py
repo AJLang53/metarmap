@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import TypeVar
+from typing import TypeVar, Literal
 T = TypeVar("T")
 
 from datetime import datetime, timezone
@@ -147,13 +147,17 @@ class METAR:
         return
 
     @property
-    def wind_dir_degrees(self) -> float | None:
+    def wind_dir_degrees(self) -> float | Literal['VRB'] | None:
         return self._wind_dir_degrees
     
     @wind_dir_degrees.setter
     def wind_dir_degrees(self,val: str | float) -> None:
         """attempt conversion to float"""
-        cast_val = try_cast(val, float, self.logger)
+        # Wind direction can report as VRB for variable
+        if val.lower() == 'vrb':
+            val = 'VRB'
+        else:
+            cast_val = try_cast(val, float, self.logger)
         if cast_val is not None:
             self._wind_dir_degrees = cast_val
         return
@@ -165,6 +169,7 @@ class METAR:
     @wind_speed_kt.setter
     def wind_speed_kt(self,val: str | int) -> None:
         """attempt conversion to float"""
+        # Wind speed can report as VRB for variable, treat this as a 0 knot speed
         cast_val = try_cast(val, int, self.logger)
         if cast_val is not None:
             self._wind_speed_kt = cast_val

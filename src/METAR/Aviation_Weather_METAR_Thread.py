@@ -55,13 +55,13 @@ class Aviation_Weather_METAR_Thread(Aviation_Weather_METAR, Thread):
             self.start()
 
     @property
-    def live_metar_data(self) -> dict[str, METAR] | None:
+    def live_metar_data(self) -> dict[str, METAR | None] | None:
         """Thread-safe method to acquire the active METAR data dictionary of the thread"""
         with self._live_metar_data_lock:
             return self._live_metar_data
         
     @live_metar_data.setter
-    def live_metar_data(self, new_metar_data: dict[str, METAR]) -> None:
+    def live_metar_data(self, new_metar_data: dict[str, METAR | None]) -> None:
         with self._live_metar_data_lock:
             self._live_metar_data = new_metar_data
         

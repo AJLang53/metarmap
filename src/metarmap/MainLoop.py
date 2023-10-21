@@ -40,7 +40,7 @@ class MainLoop:
         self.config: METAR_MAP_Config = config
 
         # The map holds the current METAR state that will drive the LEDs
-        self._current_metar_state = None   # Holder for the current metar state of the map
+        self._current_metar_state: dict[str, METAR | None] | None = None   # Holder for the current metar state of the map
         self._current_metar_state_datetime: timedelta | None = None      # The age of the live data
 
         wind_blink_manager: Random_Blink_Manager | None = None
@@ -138,24 +138,27 @@ class MainLoop:
 
         if self.config.metar_source.data_is_stale:
             self._logger.debug(f'metar_source signals that data is stale')
-            for station_id in self._current_metar_state:
-                self._current_metar_state[station_id] = METAR()
-                self._current_metar_state_datetime = None
+            if self._current_metar_state is not None:
+                for station_id in self._current_metar_state:
+                    self._current_metar_state[station_id] = METAR()
+                    self._current_metar_state_datetime = None
 
     def _process_flight_category(self, station_metar: METAR) -> RGB_color:
         """Handle the flight category for the base color"""
 
-        if station_metar.flight_category == 'VFR':
-            color = self.config.metar_colors.color_vfr
-        elif station_metar.flight_category == 'MVFR':
-            color = self.config.metar_colors.color_mvfr
-        elif station_metar.flight_category == 'IFR':
-            color = self.config.metar_colors.color_ifr
-        elif station_metar.flight_category == 'LIFR':
-            color = self.config.metar_colors.color_lifr
-        else:
-            raise ValueError(f'Unsupported flight_category: {station_metar.flight_category} for station_metar: {station_metar}')
-        
+        try:
+            if station_metar.flight_category == 'VFR':
+                color = self.config.metar_colors.color_vfr
+            elif station_metar.flight_category == 'MVFR':
+                color = self.config.metar_colors.color_mvfr
+            elif station_metar.flight_category == 'IFR':
+                color = self.config.metar_colors.color_ifr
+            elif station_metar.flight_category == 'LIFR':
+                color = self.config.metar_colors.color_lifr
+            else:
+                raise ValueError(f'Unsupported flight_category: {station_metar.flight_category} for station_metar: {station_metar}')
+        except AttributeError:
+            raise ValueError(f'station_metar: {station_metar} does not have the flight_category attribute')
         return color
     
     def _process_brightness(self, color: RGB_color) -> RGB_color:
@@ -219,7 +222,7 @@ class MainLoop:
         If a station has lightning, process the lightning display feature
         """
         # If the feature is disabled, don't do anything
-        if not self.config.lightning_enabled:
+        if not self.config.lightning_animation_enabled:
             return color
         
         lightning_substrings = [
@@ -254,14 +257,18 @@ class MainLoop:
             except KeyError:
                 self._logger.error(f'No METAR data for station: {station}')
                 continue
+            
+            # It's possible that the metar for a given station ID is None, if it could not be retreived
+            if station_metar is None:
+                self._logger.error(f'Station: {station.id} has no data in _current_metar_state: {self._current_metar_state}')
+                continue
 
             try:
                 color = self._process_flight_category(station_metar)
             # A ValueError is raised if the station_metar does not have a supported flight category
             # Log the error, but continue through the loop (ignore this case, hopefully a new METAR will resolve it)
-            except ValueError as ve:
-                self._logger.error(f'Error encountered in process_flight_category for station_id: {station.id}, METAR: {station_metar}')
-                continue
+            except (ValueError, AttributeError) as e:
+                self._logger.exception(f'Error encountered in process_flight_category for station_id: {station.id}, METAR: {station_metar}')
             
             wind_color = self._process_wind(color, station, station_metar)
             # lightning_color = self._process_lightning(station_metar)

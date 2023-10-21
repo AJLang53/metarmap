@@ -74,7 +74,7 @@ def retrieve_METAR_of_stations(station_id_list: list[str],
 		try:
 			station_metar = result_dict[station_id]
 		except KeyError:
-			logger.warning(f'Unexpected station in result xml: {station_id}')
+			logger.error(f'No METAR data retrieved for: {station_id}')
 			continue
 		else:
 			metar_data_list[station_id_list.index(station_id)] = station_metar
@@ -200,7 +200,7 @@ class Aviation_Weather_METAR:
 	def __init__(self, stations: list[str] | None = None):
 		self._logger = logging.getLogger(f'{self.__class__.__name__}')
 
-		self._metar_data: dict[str, METAR] = {}	# Data dictionary, holds the current data for the stations that this object manages
+		self._metar_data: dict[str, METAR | None] = {}	# Data dictionary, holds the current data for the stations that this object manages
 
 		#  initialize the metar_data dictionary with the set of input stations (if present)
 		if stations is not None:
