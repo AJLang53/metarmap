@@ -18,18 +18,13 @@ import board
 from metarmap.Logging import initialize_basic_log_stream, initialize_rotating_file_log
 
 station_map = {
-    'DEMO1': 27,
-    'DEMO2': 30,
-    'DEMO3': 31,
-    'DEMO4': 32,
-    'DEMO5': 34,
-    'DEMO6': 36,
-    'DEMO7': 38,
-    'DEMO8': 41,
-    'DEMO9': 44,
-    'DEMO10': 46,
-    'DEMO11': 47,
-    'DEMO12': 49
+    'DEMO1': 49,
+    'DEMO2': 47,
+    'DEMO3': 46,
+    'DEMO4': 44,
+    'DEMO5': 41,
+    'DEMO6': 38,
+    'DEMO7': 36,
 }
 
 demo_data = {

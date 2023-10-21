@@ -234,14 +234,16 @@ class MainLoop:
         # Look for the target strings
         lightning = False
         for substring in lightning_substrings:
-            if station_metar.raw_text.find(substring, 4):   # Start looking after the station name only
+            if station_metar.raw_text.find(substring, 4) == -1:   # Start looking after the station name only
+                continue
+            else:
                 lightning = True
         
         if lightning:
             if station.lightning_state.blink():
                 return self.config.metar_colors.color_lightning
         
-        return color
+        return lightning, color
 
     def _update_color_map(self) -> None:
         """Update the color map between stations and their pixels using the metar data"""
@@ -272,21 +274,24 @@ class MainLoop:
                 self._logger.exception(f'Error encountered in process_flight_category for station_id: {station.id}, METAR: {station_metar}')
                 continue
             
-            wind_color = color
+            lightning_color = color
+            lightning_colored = False
             try:
-                wind_color = self._process_wind(color, station, station_metar)
-            except (ValueError, AttributeError) as e:
-                self._logger.exception(f'Error encountered in _process_wind for station_id: {station.id}, METAR: {station_metar}')
-                continue
-            
-            lightning_color = wind_color
-            try:
-                lightning_color = self._process_lightning(color, station, station_metar)
+                lightning_colored, lightning_color = self._process_lightning(color, station, station_metar)
             except (ValueError, AttributeError) as e:
                 self._logger.exception(f'Error encountered in _process_lightning for station_id: {station.id}, METAR: {station_metar}')
                 continue
+            
 
-            brightness_modified_color = self._process_brightness(lightning_color)
+            wind_color = lightning_color
+            if not lightning_colored:
+                try:
+                    wind_color = self._process_wind(color, station, station_metar)
+                except (ValueError, AttributeError) as e:
+                    self._logger.exception(f'Error encountered in _process_wind for station_id: {station.id}, METAR: {station_metar}')
+                    continue
+
+            brightness_modified_color = self._process_brightness(wind_color)
 
             # Apply the result to the object station list
             station.active_color = brightness_modified_color
