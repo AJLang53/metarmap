@@ -50,6 +50,7 @@ lightning_animation_config = Lightning_Animation_Config(enabled = True)
 
 map_config  = METAR_MAP_Config(
     name = 'PC_Test_map',
+    logging_level=logging.DEBUG,
     metar_source = adds_metar_thread,
     station_map=station_map,
     led_driver=led_driver,
@@ -60,8 +61,8 @@ map_config  = METAR_MAP_Config(
 )
 
 def main():
-    logger = logging.getLogger('main_function')
-    initialize_basic_log_stream(logger, logging.INFO)
+    logger = logging.getLogger()
+    initialize_basic_log_stream(logger, logging.DEBUG)
     initialize_rotating_file_log(logging.getLogger(), output_directory = Path(__file__).parent.parent / 'logs', output_name = f'{map_config.name}', max_bytes= 10*1024*1024, backup_count=25)
 
     # Create the MainLoop object to run the map

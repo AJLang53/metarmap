@@ -155,7 +155,7 @@ class METAR:
         """attempt conversion to float"""
         # Wind direction can report as VRB for variable
         if val.lower() == 'vrb':
-            val = 'VRB'
+            cast_val = 'VRB'
         else:
             cast_val = try_cast(val, float, self.logger)
         if cast_val is not None:

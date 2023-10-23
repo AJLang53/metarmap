@@ -77,7 +77,8 @@ class Day_Night_Dimming_Config:
         else:
             # Check sunrise sunset
             if self.use_sunrise_sunet:
-                return not is_between_sunrise_sunset(self.day_night_latitude, self.day_night_longitude, time.now().time())
+                is_after_sunset = not is_between_sunrise_sunset(self.day_night_latitude, self.day_night_longitude, time.utcnow())
+                return is_after_sunset
             else:
                 return not (self.bright_time_start < time.now().time() < self.dim_time_start)
 

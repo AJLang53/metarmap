@@ -73,6 +73,13 @@ class MainLoop:
                 lightning_cycle_manager = lightning_cycle_manager
             ))
 
+        # Debug attributes for better debug function
+        if self.config.logging_level == logging.DEBUG:
+            self.debug_attrs = {
+                'night_mode_active': False,
+                'no_LED_Driver': False
+            }
+
         return
 
     def __repr__(self):
@@ -309,10 +316,26 @@ class MainLoop:
                 # Bypass if LED_driver is not configured (allows for testing without actually using LEDs)
                 if self.config.led_driver is not None:
                     self.config.led_driver.update_LED(station.pin_index, station.active_color)
-                else:
-                    self._logger.debug('no LED Driver configured')
 
         return
+    
+    def debug_funcs(self):
+        """Debug functions"""
+        # Log the activation and deactivation of night mode
+        if self.config.day_night_dimming is not None:
+            if self.config.day_night_dimming.use_dim(datetime.now()):       # The configuration itself provides the method to determine if it should be dim now
+                if not self.debug_attrs['night_mode_active']:
+                    self.debug_attrs['night_mode_active'] = True
+                    self._logger.debug(f'Night Mode activated: {datetime.now()}')
+            elif self.debug_attrs['night_mode_active']:
+                self.debug_attrs['night_mode_active'] = False
+                self._logger.debug(f'Night Mode deactivated: {datetime.now()}')
+
+        # Log that there is no LED driver (once)
+        if self.config.led_driver is None:
+            if not self.debug_attrs['no_LED_Driver']:
+                self.debug_attrs['no_LED_Driver'] = True
+                self._logger.debug(f'No LED Driver present')
 
     def loop(self):
         # See if the METAR_SOURCE has new data available and update the mainloop data if so
@@ -323,6 +346,10 @@ class MainLoop:
 
         # Apply the color map to the LED output as defined by the configuration
         self._update_LEDs()
+
+        # DEBUG Functions, only do anything if logging_level is DEBUG
+        if self.config.logging_level == logging.DEBUG:
+            self.debug_funcs()
 
     def close(self):
         if self.config.led_driver is not None:

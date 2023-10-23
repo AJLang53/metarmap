@@ -13,9 +13,10 @@ import astral, astral.sun
 def is_between_sunrise_sunset(latitude: float, longitude: float, time: datetime) -> bool:
     """Returns True if the time provided at location is between sunrise and sunset"""
     observer = astral.Observer(latitude=latitude, longitude=longitude)
-    sunrise = astral.sun.sunrise(observer=observer, date = datetime.date(datetime.now())).time()
-    sunset = astral.sun.sunset(observer=observer, date = datetime.date(datetime.now())).time()
-    return sunrise < time < sunset
+    sunrise = astral.sun.sunrise(observer=observer, date = time.date()).time()
+    sunset = astral.sun.sunset(observer=observer, date = time.date()).time()
+    current_time = time.time()
+    return sunrise < current_time < sunset
 
 def quickselect_median(dset: typing.Iterable[numeric], pivot_fn: typing.Callable[[typing.Iterable[numeric]], numeric] = random.choice) -> float:
     """Returns the set median in average O(n) time"""
