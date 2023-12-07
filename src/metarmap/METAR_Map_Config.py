@@ -2,12 +2,34 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 from dataclasses import dataclass
+import configparser
+from pathlib import Path
+import typing
+T = typing.TypeVar('T')
 
 # Module Imports
 from metarmap.METAR_SOURCE import METAR_SOURCE
 from metarmap.utils import is_between_sunrise_sunset
 from metarmap.RGB_color import RGB_color
 from LED_Control.LED_Driver import LED_DRIVER
+
+def none_check_dict_path(dict: dict[T, typing.Any], key_path: typing.Iterable[T] | T) -> typing.Any | None:
+    """
+    Try the keys in the key_path list sequentially into the dict, returning None if not found
+    """
+    if not isinstance(key_path, typing.Iterable):
+        key_path = [key_path]
+
+    if len(key_path) > 1:
+        try:
+            return none_check_dict_path(dict[key_path[0]], key_path[1:])
+        except KeyError:
+            return None
+    else:
+        try:
+            return dict[key_path[0]]
+        except KeyError:
+            return None
 
 @dataclass
 class Lightning_Animation_Config:
@@ -112,6 +134,37 @@ class METAR_COLOR_CONFIG:
 
 class METAR_MAP_Config:
     """Configuration of the METAR MAP"""
+
+    @classmethod
+    def from_cfg(self, cfg_path: Path | str) -> METAR_MAP_Config:
+        raise NotImplementedError
+        """Parse a cfg file into a configuration"""
+
+        # Read config
+        cfg_path = Path(cfg_path)
+        config = configparser.ConfigParser()
+        config.read(cfg_path)
+
+        # Get the base attributes
+        try:
+            root = config[f'{self.__class__.__name__}']
+        except KeyError:
+            raise ValueError(f'Invalid Configuration File, no top level {self.__class__.__name__} section: {cfg_path}')
+        name = none_check_dict_path(root, 'name')
+        if name is None:
+            raise ValueError(f'Invalid Configuration File, missing name: {cfg_path}')
+        logging_level = none_check_dict_path(root, 'logging_level')
+
+        # Parse the station map
+        station_map: dict[str, int] = none_check_dict_path(config, ['METAR_MAP_Config.station_map','station_map'])
+        if station_map is None:
+            raise ValueError(f'Invalid Configuration File, missing station_map: {cfg_path}')
+        
+        metar_source = parse_metar_source_cfg(config['METAR_MAP_Config.METAR_SOURCE'])
+
+        return METAR_MAP_Config(name = name, metar_source=metar_source, logging_level = logging_level)
+
+
     def __init__(self, name: str, 
                  metar_source: METAR_SOURCE,
                  logging_level: int = logging.INFO, 

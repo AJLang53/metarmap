@@ -49,6 +49,7 @@ class Aviation_Weather_METAR_Thread(Aviation_Weather_METAR, Thread):
         self._stale_data_time: timedelta = stale_data_time          # Setup interval time for stale data timeout
 
         self._last_attempt_time = datetime.now()        # Time object to synchronize updates
+        self._last_success_time = None
 
         if not wait_to_run:
             self.daemon = True
@@ -107,6 +108,11 @@ class Aviation_Weather_METAR_Thread(Aviation_Weather_METAR, Thread):
         '''
         Compares timedelta to last attempt against the stale data time parameter
         '''
+        # If there has never been a success, the data is not considered stale
+        if self._last_success_time is None:
+            return False
+        
+        # Otherwise, check if the last success was longer than the stale data time in the past
         time_delta = get_time_delta_to_event(self._last_success_time)
         if time_delta > self._stale_data_time:
             return True
@@ -171,7 +177,12 @@ class Aviation_Weather_METAR_Thread(Aviation_Weather_METAR, Thread):
         
         # Run loop until stop flag
         while not self._stop:
-            self.loop()
+            try:
+                self.loop()
+            except:
+                self._logger.exception(f'Unhandled exception in {self.__class__.__name__}')
+                self._is_running = False
+                self._stop = True
         self._is_running = False
             
         self._logger.warning('ADDSMETARThread has exited the loop')

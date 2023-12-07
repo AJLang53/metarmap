@@ -269,7 +269,7 @@ class MainLoop:
             
             # It's possible that the metar for a given station ID is None, if it could not be retreived
             if station_metar is None:
-                self._logger.error(f'Station: {station.id} has no data in _current_metar_state: {self._current_metar_state}')
+                self._logger.error(f'Station: {station.id} has no data in _current_metar_state: {self._current_metar_state[station.id]}')
                 continue
             
             color = None
@@ -338,6 +338,7 @@ class MainLoop:
                 self._logger.debug(f'No LED Driver present')
 
     def loop(self):
+
         # See if the METAR_SOURCE has new data available and update the mainloop data if so
         self._check_for_new_METAR_data()
 

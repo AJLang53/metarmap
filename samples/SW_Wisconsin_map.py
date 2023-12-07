@@ -89,6 +89,8 @@ def main():
                 metarmap_loop.loop()
         except KeyboardInterrupt:
             logger.critical('Loop Ended by Keyboard Interrupt')
+        except Exception as e:
+            logger.exception(f'Main Loop ended due to unhandled exception')
 
 if __name__ == '__main__':
     sys.exit(main())
