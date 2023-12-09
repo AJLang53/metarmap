@@ -1,7 +1,10 @@
 import logging
 from logging.handlers import RotatingFileHandler
-from dataclasses import dataclass
+
 from pathlib import Path
+import shutil
+import os
+
 from datetime import datetime
 
 def initialize_basic_log_stream(logger: logging.Logger, level: int) -> None:
@@ -14,9 +17,10 @@ def initialize_basic_log_stream(logger: logging.Logger, level: int) -> None:
     logger.addHandler(ch)
     return
 
-def initialize_rotating_file_log(logger: logging.Logger, 
-                                 output_directory: Path, output_name: str, 
-                                 fileLevel = logging.DEBUG,
+def initialize_rotating_file_log(output_directory: Path | str, output_name: str, 
+                                 logger: logging.Logger = logging.getLogger(''), 
+                                 log_level: int | None = None,
+                                 log_formatter: logging.Formatter = logging.Formatter('[%(asctime)s] %(name)-16s :: %(levelname)-8s :: %(message)s'),
                                  max_bytes: int = 10485760,      # Default 10 mb
                                  backup_count: int = 25,          # Default 250mb log
                                 ) -> None:
@@ -24,13 +28,22 @@ def initialize_rotating_file_log(logger: logging.Logger,
     Set up a rotating log file for the logger provided using the input parameters
     
     Default parameters are 25, 10 Mb file for a total of 250mb stored log
+    :param output_directory: Path to where the file logs should be put
+    :param output_name: Name to give each log file
+    :param logger: Optional, logger object to use. Default is root logger
+    :param log_level: Optional, Logging level for this logger
+    :param log_formatter: Optional, formatter to apply to these log files. Default includes asctime, name, levelname, and message
+    :param max_bytes: Maximum number of bytes for each individual file, default 10mb
+    :param backup_count: Number of files to rotate through, default 25 for 250mb of logs maintained
+    :return: None
     """
 
-    # Setup root logger
-    logger.setLevel(fileLevel)
+    # Setup logger with a level if provided, otherwise assume this is set elsewhere
+    if log_level is not None:
+        logger.setLevel(log_level)
 
     # Log files in a logs folder at the main application level. Create this directory if it does not exist
-    log_dir = output_directory
+    log_dir = Path(output_directory)
     if not log_dir.exists():
         Path.mkdir(log_dir)
 
@@ -42,8 +55,209 @@ def initialize_rotating_file_log(logger: logging.Logger,
     # Setup a Rotating Log File with fixed size for continuous logging
     # Allocate 250mb to this task, keeps file 10mb each
     rotHandler = RotatingFileHandler(LOG_FILEPATH, maxBytes = max_bytes, backupCount = backup_count)
-    formatter = logging.Formatter('[%(asctime)s] %(name)-16s :: %(levelname)-8s :: %(message)s')
+    formatter = log_formatter
     rotHandler.setFormatter(formatter)
     logger.addHandler(rotHandler)
     logger.info(f'ROTATING LOG REINITIALIZED')
     return
+
+class Bad_Active_Flag_Exception(Exception):
+    pass
+
+class Boot_Cycle_Log_Manager:
+    """
+    A class designed for maintaining a separate log for each boot cycle of the system, retaining a history of logs
+    separated by each reinitialization of the system. It has no dependence on available date-time
+    
+    The active log is designated by a specific file flag in the directory. 
+    At each reinitialization of the program, the system will remove the old flag and place a new one for the new active directory
+
+    The active directory uses a rotating log system to maintain a certain number of log files for a given cycle
+
+    Defaults initialize a 1GB maximum log directory with 10 cycles, each capable of holding 100mb of log data
+
+    Note that the Manager will try to delete contents found in sub-directories of the root, it is not recommended to store any
+    data that is not managed by this Manager in that directory
+    """
+    def __init__(self, log_root: Path | str,
+                 log_file_name: str,
+                 logger: logging.Logger = logging.getLogger(''),
+                 log_level: int = logging.DEBUG,
+                 cycle_count: int = 10,          # Number of old power cycle logs to maintain
+                 max_bytes: int = 10485760,      # Default 10 mb
+                 backup_count: int = 10,          # Default 100mb log
+                 active_log_flag: str = '.active_log_flag',
+                 cycle_path_prefix: str = 'cycle_log'):
+        """
+        :param log_root: The root path to the logs for this system
+        :param log_file_name: Name to give each log file
+        :param logger: Logger object to use, defaults to root logger
+        :param log_level: Logging level for this system
+        :param cycle_count: Number of boot cycles to maintain, default 10
+        :param max_bytes: Maximum size of an individual .log file generated by the rotating log, default 10 mb
+        :param backup_count: Number of backup to maintain for a given boot cycle
+        :param active_log_flag: string designating what to label the active log, defaults to '.active_log_flag'
+        :param cycle_path_prefix: string designating the prefix to give each cycle directory, defaults 'cycle_log'
+        
+        :return: None
+        :raises ValueError: Input parameter does not pass sanitization
+        """
+        # Retrieve and santitize inputs
+        self.log_root = Path(log_root)
+        if self.log_root.exists():
+            if not self.log_root.is_dir():
+                raise ValueError(f'The log_root must be directory: {self.log_root}')
+        else:
+            self.log_root.mkdir()
+
+        self.log_file_name = log_file_name
+        self.logger = logger
+        self.log_level = log_level
+        self.cycle_count = cycle_count
+        if self.cycle_count < 1:
+            raise ValueError(f'cycle_count must be greater than or equal to 1: {self.cycle_count}')
+        
+        self.max_bytes = max_bytes
+        self.backup_count = backup_count
+        if self.backup_count < 1:
+            raise ValueError(f'backup_count must be greater than or equal to 1: {self.backup_count}')
+        
+        self.active_log_flag = active_log_flag
+        self.cycle_path_prefix = cycle_path_prefix
+
+        return
+    
+    def _initialize_logging_root(self) -> Path:
+        """
+        Called when the log_root does not the active_log_flag in any sub-directories
+        Initializes the system to {cycle_path_prefix}0, deleting any contents it has if it already exists
+
+        :returns: Path to the active log
+        """
+        # Start at the beginning (cycle 0)
+        active_path = self._initialize_log_cycle(0)
+
+        return active_path
+
+    def _initialize_log_cycle(self, cycle_value: int) -> Path:
+        """
+        Initialize the log cycle provided by integer value
+
+        Determines the directory name for this cycle, cleans it up, and adds the flag
+
+        :param cycle_value: integer, cycle count to setup
+        :return: Path to active_log_directory
+        """
+        # Create the active_log_path at root
+        active_path_name = self.log_root  / f'{self.cycle_path_prefix}{cycle_value}'
+
+        # If this path already exists, then we'll need to remove contents as we'll be overwriting them
+        # Recurively try to delete all items in this directory
+        if active_path_name.exists():
+            shutil.rmtree(active_path_name, ignore_errors = True)
+
+        # Create the directory fresh, new starting point
+        active_path_name.mkdir()
+        
+        # Create the active_log_file flag in this directory
+        active_log_flag = active_path_name / f'{self.active_log_flag}'
+        with open(active_log_flag, 'w') as f:
+            # Try to write the current datatime to this file just as an extra potentially
+            # useful item for anyone actually using these logs
+            try:
+                f.write(datetime.now().isoformat())
+            except:
+                pass
+
+        return active_path_name
+    
+    def _search_for_active_log_flag(self) -> Path | None:
+        """
+        Searches the log_root for the active flag
+
+        :return: Path to the active_flag file, or None if not found
+        """
+        # Iterate through all directories in the log_root, searching for the active log 
+        # file in each sub directory
+        located_flag = None
+        for root_item in self.log_root.iterdir():
+            if root_item.is_dir():
+                for sub_item in root_item.iterdir():
+                    if sub_item.name == self.active_log_flag:
+                        located_flag = sub_item
+        return located_flag
+
+    def manage_log_root(self) -> Path:
+        """
+        Manage the log root, called once per cycle
+
+        1. Determines what the active log for this cycle is, removes old flag, places new one
+        2. Removes all data from active log (if any present)
+
+        :param cycle_path_root: The prefix for each cycle log, will be appended with the active count value
+        :return: Path to the active_log directory
+        :raises Bad_Active_Flag_Exception: Signals that there is a bad flag in the system that cannot be managed. The Manager cannot function in this state
+        """
+        active_log_path = None
+        
+        # Get the active_flag and it's parent
+        located_flag = self._search_for_active_log_flag()
+
+        # First, we want to remove the flag that was found in order to prepare to create the new flag
+        if located_flag is not None:
+            try:
+                os.remove(located_flag)
+            except OSError:
+                # If we can't remove this file, that's going to be a long term problem with this manager
+                # A bad flag in the system will continue to ruin our log data
+                raise Bad_Active_Flag_Exception(f'Bad flag in system that could not be removed: flag = {located_flag}, dir = {previous_active_log}')
+
+        # If the active log file was not found at all, that means we need to initialize the system
+        if located_flag is None:
+            active_log_path = self._initialize_logging_root()
+        # Otherwise, we need to:
+        #   - Determine the directory for this cycle, as the old one + 1
+        #   - Delete the old active log file
+        #   - Create the new active log file
+        else:
+            previous_active_log = located_flag.parent
+
+            # If the prefix isn't in the previous_active_log, then we have a problem, reinitialize
+            if self.cycle_path_prefix not in previous_active_log.name:
+                active_log_path = self._initialize_logging_root()
+            else:
+                # Get the value appended to the prefix, should be an int
+                previous_cycle = previous_active_log.name.split(f'{self.cycle_path_prefix}')[1]
+                try:
+                    previous_cycle = int(previous_cycle)
+                # If it's not an int, then we have a problem. Reinitialize the root
+                except ValueError:
+                    active_log_path = self._initialize_logging_root()
+                # Otherwise, we need to determine the current active_cycle count
+                # Try adding one to the previous cycle count. If that value is greater than the number of cycles
+                # configuration, then we'll need to cycle back to the beginning
+                else:
+                    active_cycle = previous_cycle + 1
+                    if active_cycle >= self.cycle_count:    # >= check because we're using 0 indexing
+                        active_log_path = self._initialize_log_cycle(0)
+                    else:
+                        active_log_path = self._initialize_log_cycle(active_cycle)
+
+
+        return active_log_path
+
+
+    def run(self) -> None:
+        """Run the Manager"""
+        # Determine the active log path, managing the root as you do so
+        active_log_path = self.manage_log_root()
+
+        # Initialize the rotating logger in the target directory
+        initialize_rotating_file_log(logger = self.logger, 
+                                     output_directory=active_log_path, 
+                                     output_name=self.log_file_name,
+                                     log_level=self.log_level,
+                                     max_bytes=self.max_bytes,
+                                     backup_count=self.backup_count
+        )
+        return

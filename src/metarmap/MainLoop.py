@@ -135,14 +135,18 @@ class MainLoop:
         Check if the metar_source has signaled new data is available
         If it is, get the live_metar_data and set the signal to false
         """
-        # If there's new data from the source (or we have no data at all)
-        if self.config.metar_source.new_metar_data or self._current_metar_state is None:            
-            self._logger.debug(f'new metar data signaled')
+        # If there's new data from the source (or we have no data at all), then we want to try and grab th
+        if self.config.metar_source.new_metar_data or self._current_metar_state is None:     
+            if self.config.metar_source.new_metar_data:       
+                self._logger.debug(f'new_metar_data signaled by METAR_SOURCE')
+            if self._current_metar_state is None:
+                self._logger.debug(f'_current_metar_state is None')
             new_metar_dict = self.config.metar_source.live_metar_data       # Get the live data
             self._current_metar_state = new_metar_dict              # Set the current data dict to the new data
             self._current_metar_state_datetime = datetime.now()
             self.config.metar_source.new_metar_data = False                # Set the new data flag to false
 
+        # If the source signals that the data is stale, we want to clear out our live state
         if self.config.metar_source.data_is_stale:
             self._logger.debug(f'metar_source signals that data is stale')
             if self._current_metar_state is not None:

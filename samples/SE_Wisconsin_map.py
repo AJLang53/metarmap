@@ -14,7 +14,7 @@ from METAR.Aviation_Weather_METAR_Thread import Aviation_Weather_METAR_Thread
 from LED_Control.RPi_zero_NeoPixel_LED_Driver import RPi_zero_NeoPixel_LED_Driver, RPi_zero_NeoPixel_Config
 import board
 
-from metarmap.Logging import initialize_basic_log_stream, initialize_rotating_file_log
+from metarmap.Logging import initialize_basic_log_stream, Boot_Cycle_Log_Manager, Bad_Active_Flag_Exception
 
 station_map = {
     'KETB': 27,
@@ -74,9 +74,18 @@ map_config  = METAR_MAP_Config(
 )
 
 def main():
+    # Basic stream log for when you want to run this manually
     initialize_basic_log_stream(logging.getLogger(), logging.INFO)
-    initialize_rotating_file_log(logging.getLogger(), output_directory = Path(__file__).parent.parent / 'logs', output_name = f'{map_config.name}', 
-                                 fileLevel= map_config.logging_level, max_bytes = 10*1024*1024, backup_count=25)
+
+    # Initialize a Boot_Cycle_Log_Manager using all default settings for 1GB of log data max
+    log_manager = Boot_Cycle_Log_Manager(
+        log_root = Path(__file__).parent.parent / 'logs',
+        log_file_name = f'{map_config.name}',
+        logger=logging.getLogger(),
+        log_level=logging.DEBUG
+    )
+    log_manager.run()
+
     logger = logging.getLogger('main_function')
 
     # Create the MainLoop object to run the map
