@@ -39,7 +39,7 @@ adds_metar_thread = Aviation_Weather_METAR_Thread(
 
 # Map configuration
 map_config  = METAR_MAP_Config(
-    name = 'SW_Wisconsin_map',
+    name = 'SE_Wisconsin_map',
     logging_level=logging.DEBUG, 
 
     # stations align with the physical map section and the LEDs in use
