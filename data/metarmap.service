@@ -1,0 +1,12 @@
+[Unit]
+Description=METAR Map
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/home/raspberrypi/projects/metarmap/run_map_bash.sh
+
+[Install]
+WantedBy=multi-user.target
