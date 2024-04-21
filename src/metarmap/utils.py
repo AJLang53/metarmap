@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import typing
 numeric = typing.Union[int, float, complex]     # Define numeric type
 from collections import deque
@@ -13,9 +13,12 @@ import astral, astral.sun
 def is_between_sunrise_sunset(latitude: float, longitude: float, time: datetime) -> bool:
     """Returns True if the time provided at location is between sunrise and sunset"""
     observer = astral.Observer(latitude=latitude, longitude=longitude)
-    sunrise = astral.sun.sunrise(observer=observer, date = time.date()).time()
-    sunset = astral.sun.sunset(observer=observer, date = time.date()).time()
-    current_time = time.time()
+    sunrise = astral.sun.sunrise(observer=observer, date = time.date())
+    sunset = astral.sun.sunset(observer=observer, date = time.date())
+    current_time = time
+    # For some reason, astral.sun does not properly account for the date rolling over, do it for them
+    if not sunrise < sunset:
+        sunset = sunset + timedelta(days = 1)
     return sunrise < current_time < sunset
 
 def quickselect_median(dset: typing.Iterable[numeric], pivot_fn: typing.Callable[[typing.Iterable[numeric]], numeric] = random.choice) -> float:

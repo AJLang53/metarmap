@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from dataclasses import dataclass
 import configparser
 from pathlib import Path
@@ -99,7 +99,7 @@ class Day_Night_Dimming_Config:
         else:
             # Check sunrise sunset
             if self.use_sunrise_sunet:
-                is_after_sunset = not is_between_sunrise_sunset(self.day_night_latitude, self.day_night_longitude, time.utcnow())
+                is_after_sunset = not is_between_sunrise_sunset(self.day_night_latitude, self.day_night_longitude, time.now(timezone.utc))
                 return is_after_sunset
             else:
                 return not (self.bright_time_start < time.now().time() < self.dim_time_start)
